@@ -1,4 +1,17 @@
+"""
+OTel SDK init split into two phases:
+
+1. init_observability_providers() — installs TracerProvider + MeterProvider on
+   the global OTel APIs. Must run BEFORE any module imports that create
+   meters/instruments at module load (e.g., backend.observability.metrics),
+   otherwise instruments bind permanently to the no-op ProxyMeterProvider.
+
+2. instrument_app(app) — wires FastAPIInstrumentor onto the app instance and
+   activates HTTPXClientInstrumentor. Runs AFTER the FastAPI app exists.
+"""
+import logging
 import os
+import sys
 
 from opentelemetry import metrics, trace
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
@@ -12,15 +25,27 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 
-def init_otel(app) -> None:
+_INITIALIZED = False
+
+
+def init_observability_providers() -> None:
+    """Install OTel TracerProvider + MeterProvider on the global APIs.
+
+    Idempotent. No-op if OTEL_EXPORTER_OTLP_ENDPOINT is unset (local dev).
+    """
+    global _INITIALIZED
+    if _INITIALIZED:
+        return
+
+    endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "")
+    if not endpoint:
+        return
+
     resource = Resource.create({
         "service.name": "sre-copilot-backend",
         "service.version": os.environ.get("APP_VERSION", "dev"),
         "deployment.environment": "kind-local",
     })
-    endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "")
-    if not endpoint:
-        return
 
     tp = TracerProvider(resource=resource)
     tp.add_span_processor(
@@ -39,9 +64,28 @@ def init_otel(app) -> None:
     )
     metrics.set_meter_provider(mp)
 
+    # Surface OTel SDK errors to stderr so we see export failures
+    # (BatchSpanProcessor swallows them by default).
+    logging.getLogger("opentelemetry").addHandler(logging.StreamHandler(sys.stderr))
+
+    _INITIALIZED = True
+
+
+def instrument_app(app) -> None:
+    """Wire auto-instrumentation onto the FastAPI app instance.
+
+    Safe to call even when providers weren't initialized (instruments will
+    no-op against the ProxyTracerProvider).
+    """
     FastAPIInstrumentor.instrument_app(
         app,
         excluded_urls="/healthz,/metrics",
         http_capture_headers_server_request=["traceparent", "x-request-id"],
     )
     HTTPXClientInstrumentor().instrument()
+
+
+# Backwards-compatible alias for any external caller.
+def init_otel(app) -> None:
+    init_observability_providers()
+    instrument_app(app)

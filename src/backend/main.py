@@ -1,15 +1,29 @@
+"""
+Backend entrypoint.
+
+CRITICAL: OTel SDK providers MUST be installed before importing any module that
+creates meters/instruments at import time (e.g., backend.observability.metrics).
+Otherwise instruments bind to the no-op ProxyMeterProvider permanently. This is
+why init_observability() runs first, before all other backend.* imports.
+"""
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.admin.injector import router as admin_router
-from backend.api.analyze import router as analyze_router
-from backend.api.health import router as health_router
-from backend.api.postmortem import router as postmortem_router
-from backend.middleware import RequestIdMiddleware, register_error_handlers
-from backend.observability.init import init_otel
+# OTel init MUST come before any backend.api / backend.observability.metrics imports.
+from backend.observability.init import init_observability_providers, instrument_app
 from backend.observability.logging import configure as configure_logging
+
+# Install TracerProvider + MeterProvider FIRST (before metrics/spans modules import).
+init_observability_providers()
+
+# Now safe to import modules that create instruments/tracers at module load.
+from backend.admin.injector import router as admin_router  # noqa: E402
+from backend.api.analyze import router as analyze_router  # noqa: E402
+from backend.api.health import router as health_router  # noqa: E402
+from backend.api.postmortem import router as postmortem_router  # noqa: E402
+from backend.middleware import RequestIdMiddleware, register_error_handlers  # noqa: E402
 
 
 @asynccontextmanager
@@ -37,7 +51,8 @@ app.add_middleware(
 app.add_middleware(RequestIdMiddleware)
 register_error_handlers(app)
 
-init_otel(app)
+# Wire FastAPI auto-instrumentation onto the app instance.
+instrument_app(app)
 
 app.include_router(analyze_router, prefix="/analyze")
 app.include_router(postmortem_router, prefix="/generate")
