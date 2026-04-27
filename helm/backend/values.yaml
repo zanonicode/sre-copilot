@@ -8,7 +8,7 @@ replicaCount: 2
 
 image:
   repository: sre-copilot/backend
-  tag: v2
+  tag: latest
   pullPolicy: IfNotPresent
 
 service:
