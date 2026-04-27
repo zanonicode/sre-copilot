@@ -65,6 +65,15 @@ datasources:
         uid: tempo
         url: http://tempo.observability.svc.cluster.local:3200
         jsonData:
+          # Disable gRPC streaming — Grafana's Tempo plugin would try to
+          # stream over the HTTP port (3200) and fail with 'http2: frame
+          # too large'. Tempo's actual gRPC port is 9095, but for trace-id
+          # lookups streaming buys nothing and HTTP /api/v2/traces works
+          # fine. This is the difference between "trace ID link opens No
+          # data" vs "opens the full span tree".
+          streamingEnabled:
+            search: false
+            metrics: false
           tracesToLogsV2:
             datasourceUid: loki
             filterByTraceID: true
