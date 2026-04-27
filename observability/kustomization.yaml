@@ -1,9 +1,12 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-namespace: observability
+# Note: no top-level `namespace:` directive — each resource declares its
+# own namespace. ingressroutes.yaml ships the argocd IngressRoute in the
+# argocd namespace, which a top-level directive would mis-rewrite.
 
 resources:
   - dashboards/configmaps.yaml
   - alerts/recording-rules.yaml
   - alerts/alert-rules.yaml
+  - ingressroutes.yaml
