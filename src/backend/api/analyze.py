@@ -9,7 +9,13 @@ from fastapi.responses import StreamingResponse
 from openai import APIConnectionError, AsyncOpenAI
 from opentelemetry import trace
 
-from backend.observability.metrics import LLM_OUTPUT_TOKENS, LLM_TTFT
+from backend.observability.metrics import (
+    LLM_ACTIVE,
+    LLM_INPUT_TOKENS,
+    LLM_OUTPUT_TOKENS,
+    LLM_RESPONSE,
+    LLM_TTFT,
+)
 from backend.observability.spans import synthetic_ollama_span
 from backend.prompts import render_log_analyzer
 from backend.schemas import LogAnalysisRequest
@@ -37,12 +43,16 @@ async def _sse(event: dict) -> bytes:
 async def analyze_logs(req: LogAnalysisRequest, request: Request):
     prompt = render_log_analyzer(req.log_payload, req.context)
 
+    input_tokens = req.estimated_tokens()
+    LLM_INPUT_TOKENS.add(input_tokens)
+    LLM_ACTIVE.add(1)
+
     async def stream() -> AsyncIterator[bytes]:
         with tracer.start_as_current_span(
             "ollama.host_call",
             attributes={
                 "llm.model": LLM_MODEL,
-                "llm.input_tokens": req.estimated_tokens(),
+                "llm.input_tokens": input_tokens,
                 "peer.service": "ollama-host",
                 "net.peer.name": "host.docker.internal",
                 "net.peer.port": 11434,
@@ -84,10 +94,12 @@ async def analyze_logs(req: LogAnalysisRequest, request: Request):
             finally:
                 duration = asyncio.get_event_loop().time() - t0
                 LLM_OUTPUT_TOKENS.add(output_tokens)
+                LLM_RESPONSE.record(duration)
+                LLM_ACTIVE.add(-1)
                 synthetic_ollama_span(
                     parent=span, t0=t0, duration=duration,
                     output_tokens=output_tokens,
-                    input_tokens=req.estimated_tokens(),
+                    input_tokens=input_tokens,
                 )
                 extra_fields: dict = {}
                 if ENABLE_CONFIDENCE:
