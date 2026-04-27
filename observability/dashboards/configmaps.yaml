@@ -1,6 +1,7 @@
 # Grafana dashboard ConfigMaps — auto-loaded by Grafana sidecar (label: grafana_dashboard=1)
-# Regenerate with: python3 observability/dashboards/regen-configmaps.py
-# These are also applied by ArgoCD via the observability-config Application.
+# DO NOT EDIT BY HAND — regenerate with:
+#     python3 observability/dashboards/regen-configmaps.py
+# Source of truth is the *.json files in this directory.
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -604,9 +605,10 @@ data:
         {
           "id": 1,
           "type": "stat",
-          "title": "TTFT p95 (5m)",
+          "title": "TTFT p95 (10m)",
+          "description": "95th percentile time-to-first-token. The canary AnalysisTemplate fails the rollout above 2s.",
           "gridPos": {
-            "h": 4,
+            "h": 5,
             "w": 6,
             "x": 0,
             "y": 0
@@ -617,6 +619,8 @@ data:
           "fieldConfig": {
             "defaults": {
               "unit": "s",
+              "decimals": 2,
+              "noValue": "\u2014",
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -641,11 +645,13 @@ data:
               "calcs": [
                 "lastNotNull"
               ]
-            }
+            },
+            "graphMode": "area",
+            "colorMode": "value"
           },
           "targets": [
             {
-              "expr": "histogram_quantile(0.95, sum by (le) (rate(llm_ttft_seconds_bucket[5m])))",
+              "expr": "histogram_quantile(0.95, sum by (le) (rate(llm_ttft_seconds_bucket[10m])))",
               "legendFormat": "p95 TTFT",
               "refId": "A"
             }
@@ -654,9 +660,10 @@ data:
         {
           "id": 2,
           "type": "stat",
-          "title": "Full Response p90 (5m)",
+          "title": "Full Response p90 (10m)",
+          "description": "End-to-end LLM stream completion time at p90.",
           "gridPos": {
-            "h": 4,
+            "h": 5,
             "w": 6,
             "x": 6,
             "y": 0
@@ -667,6 +674,8 @@ data:
           "fieldConfig": {
             "defaults": {
               "unit": "s",
+              "decimals": 1,
+              "noValue": "\u2014",
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -691,11 +700,13 @@ data:
               "calcs": [
                 "lastNotNull"
               ]
-            }
+            },
+            "graphMode": "area",
+            "colorMode": "value"
           },
           "targets": [
             {
-              "expr": "histogram_quantile(0.90, sum by (le) (rate(llm_response_seconds_bucket[5m])))",
+              "expr": "histogram_quantile(0.90, sum by (le) (rate(llm_response_seconds_bucket[10m])))",
               "legendFormat": "p90 full-response",
               "refId": "A"
             }
@@ -704,9 +715,10 @@ data:
         {
           "id": 3,
           "type": "stat",
-          "title": "Tokens/s (output)",
+          "title": "Output Tokens/s",
+          "description": "Stream throughput across all in-flight LLM calls.",
           "gridPos": {
-            "h": 4,
+            "h": 5,
             "w": 6,
             "x": 12,
             "y": 0
@@ -716,7 +728,18 @@ data:
           },
           "fieldConfig": {
             "defaults": {
-              "unit": "short"
+              "unit": "short",
+              "decimals": 1,
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": null
+                  }
+                ]
+              }
             }
           },
           "options": {
@@ -724,11 +747,13 @@ data:
               "calcs": [
                 "lastNotNull"
               ]
-            }
+            },
+            "graphMode": "area",
+            "colorMode": "value"
           },
           "targets": [
             {
-              "expr": "rate(llm_tokens_output_total[5m])",
+              "expr": "sum(rate(llm_tokens_output_total[1m])) or vector(0)",
               "legendFormat": "tokens/s",
               "refId": "A"
             }
@@ -738,8 +763,9 @@ data:
           "id": 4,
           "type": "stat",
           "title": "Active LLM Requests",
+          "description": "Currently in-flight Ollama calls (LLM_ACTIVE up-down counter).",
           "gridPos": {
-            "h": 4,
+            "h": 5,
             "w": 6,
             "x": 18,
             "y": 0
@@ -749,7 +775,26 @@ data:
           },
           "fieldConfig": {
             "defaults": {
-              "unit": "short"
+              "unit": "short",
+              "decimals": 0,
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 4
+                  },
+                  {
+                    "color": "red",
+                    "value": 8
+                  }
+                ]
+              }
             }
           },
           "options": {
@@ -757,11 +802,13 @@ data:
               "calcs": [
                 "lastNotNull"
               ]
-            }
+            },
+            "graphMode": "area",
+            "colorMode": "value"
           },
           "targets": [
             {
-              "expr": "llm_active_requests",
+              "expr": "sum(llm_active_requests) or vector(0)",
               "legendFormat": "active",
               "refId": "A"
             }
@@ -836,10 +883,11 @@ data:
         },
         {
           "id": 7,
-          "type": "traces",
+          "type": "table",
           "title": "Recent LLM Traces",
+          "description": "Latest ollama.host_call spans from Tempo. Click a trace ID to drill into the full span tree (Explore \u2192 Tempo).",
           "gridPos": {
-            "h": 8,
+            "h": 10,
             "w": 24,
             "x": 0,
             "y": 12
@@ -847,20 +895,42 @@ data:
           "datasource": {
             "uid": "tempo"
           },
-          "options": {
-            "query": {
-              "queryType": "search",
-              "serviceName": "sre-copilot-backend"
-            }
-          },
           "targets": [
             {
-              "queryType": "search",
-              "serviceName": "sre-copilot-backend",
-              "spanName": "ollama.host_call",
+              "queryType": "traceql",
+              "query": "{resource.service.name=\"sre-copilot-backend\" && name=\"ollama.host_call\"} | select(span.llm.model, span.llm.input_tokens)",
+              "limit": 20,
+              "tableType": "traces",
               "refId": "A"
             }
-          ]
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "displayMode": "auto"
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Trace ID"
+                },
+                "properties": [
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "title": "Open in Explore",
+                        "url": "/explore?left=%7B%22datasource%22:%22tempo%22,%22queries%22:%5B%7B%22query%22:%22${__value.raw}%22%7D%5D%7D"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
         }
       ]
     }
@@ -1267,7 +1337,8 @@ data:
         {
           "id": 7,
           "type": "timeseries",
-          "title": "Token Cost Proxy (tokens per request)",
+          "title": "Token Cost Proxy (tokens per LLM call)",
+          "description": "Average tokens per LLM endpoint call (10m window, only counts /analyze/logs and /generate/postmortem so /healthz noise doesn't dilute the ratio).",
           "gridPos": {
             "h": 8,
             "w": 24,
@@ -1279,18 +1350,37 @@ data:
           },
           "fieldConfig": {
             "defaults": {
-              "unit": "short"
+              "unit": "short",
+              "decimals": 1,
+              "noValue": "0",
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "never",
+                "spanNulls": true
+              }
+            }
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": [
+                "mean",
+                "max",
+                "lastNotNull"
+              ]
             }
           },
           "targets": [
             {
-              "expr": "rate(llm_tokens_output_total[5m]) / rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\"}[5m])",
-              "legendFormat": "output tokens/req",
+              "expr": "(sum(rate(llm_tokens_output_total[10m])) or vector(0)) / clamp_min(sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\",http_route=~\"/analyze/.*|/generate/.*\"}[10m])), 1)",
+              "legendFormat": "output tokens/call",
               "refId": "A"
             },
             {
-              "expr": "rate(llm_tokens_input_total[5m]) / rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\"}[5m])",
-              "legendFormat": "input tokens/req",
+              "expr": "(sum(rate(llm_tokens_input_total[10m])) or vector(0)) / clamp_min(sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\",http_route=~\"/analyze/.*|/generate/.*\"}[10m])), 1)",
+              "legendFormat": "input tokens/call",
               "refId": "B"
             }
           ]

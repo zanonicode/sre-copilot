@@ -102,19 +102,30 @@
     {
       "id": 7,
       "type": "timeseries",
-      "title": "Token Cost Proxy (tokens per request)",
+      "title": "Token Cost Proxy (tokens per LLM call)",
+      "description": "Average tokens per LLM endpoint call (10m window, only counts /analyze/logs and /generate/postmortem so /healthz noise doesn't dilute the ratio).",
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 12 },
       "datasource": { "uid": "prometheus" },
-      "fieldConfig": { "defaults": { "unit": "short" } },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1,
+          "noValue": "0",
+          "custom": { "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": true }
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "lastNotNull"] }
+      },
       "targets": [
         {
-          "expr": "rate(llm_tokens_output_total[5m]) / rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\"}[5m])",
-          "legendFormat": "output tokens/req",
+          "expr": "(sum(rate(llm_tokens_output_total[10m])) or vector(0)) / clamp_min(sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\",http_route=~\"/analyze/.*|/generate/.*\"}[10m])), 1)",
+          "legendFormat": "output tokens/call",
           "refId": "A"
         },
         {
-          "expr": "rate(llm_tokens_input_total[5m]) / rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\"}[5m])",
-          "legendFormat": "input tokens/req",
+          "expr": "(sum(rate(llm_tokens_input_total[10m])) or vector(0)) / clamp_min(sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\",http_route=~\"/analyze/.*|/generate/.*\"}[10m])), 1)",
+          "legendFormat": "input tokens/call",
           "refId": "B"
         }
       ]
