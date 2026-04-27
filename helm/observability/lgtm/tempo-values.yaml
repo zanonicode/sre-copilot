@@ -52,12 +52,12 @@ tempo:
   # aren't.
   metricsGenerator:
     enabled: true
-    # The chart's metricsGenerator block historically focused on remote_write
-    # for span-metrics. We don't need that — we just need the local-blocks
-    # processor enabled per-tenant via the overrides default. Setting
-    # remoteWriteUrl to "" keeps the chart from trying to push to a
-    # non-existent Prometheus remote-write endpoint.
-    remoteWriteUrl: ""
+    # We only need local-blocks for TraceQL search; we don't actually want
+    # span-metrics shipped to Prometheus. But Tempo refuses to start with
+    # an empty remoteWriteUrl, so point it at our prometheus. Push attempts
+    # will fail silently if Prometheus's remote-write receiver isn't on —
+    # local-blocks search is independent of this and will still work.
+    remoteWriteUrl: "http://prometheus-server.observability.svc.cluster.local/api/v1/write"
 
   # Apply local-blocks as the default tenant config. With
   # multitenancy_enabled: false, this single-tenant config is what every
