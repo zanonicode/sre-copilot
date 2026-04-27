@@ -33,8 +33,15 @@ async def _sse(event: dict) -> bytes:
 
 
 def _estimate_tokens(req: PostmortemRequest) -> int:
-    text = (req.log_analysis or "") + (req.timeline or "") + (req.context or "")
-    return max(1, len(text) // 4)
+    # log_analysis is dict and timeline is list[dict] per schema; serialize
+    # to JSON for a canonical text length, then apply the standard ~4 chars
+    # per token heuristic. Earlier code did `dict + str` which raised TypeError.
+    parts = [
+        json.dumps(req.log_analysis, separators=(",", ":")) if req.log_analysis else "",
+        json.dumps(req.timeline, separators=(",", ":")) if req.timeline else "",
+        req.context or "",
+    ]
+    return max(1, sum(len(p) for p in parts) // 4)
 
 
 @router.post("/postmortem")
