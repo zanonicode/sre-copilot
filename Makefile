@@ -100,22 +100,23 @@ demo-canary: ## Build backend:v2, load into kind, bump Rollout image, watch prog
 	docker build \
 	     --build-arg ENABLE_CONFIDENCE=true \
 	     -t $(BACKEND_V2_IMAGE) \
-	     -f src/backend/Dockerfile \
 	     --label "canary=v2" \
-	     .
+	     src/backend
 	@echo "==> [demo-canary] Loading backend:v2 into kind cluster..."
 	kind load docker-image $(BACKEND_V2_IMAGE) --name $(CLUSTER_NAME)
 	@echo "==> [demo-canary] Patching Rollout image to v2..."
-	$(KUBECTL) argo rollouts set image backend backend=$(BACKEND_V2_IMAGE) -n sre-copilot
+	$(KUBECTL) set image rollout/backend backend=$(BACKEND_V2_IMAGE) -n sre-copilot
 	@echo "==> [demo-canary] Watching Rollout progression (Ctrl+C to stop watching)..."
 	@echo "    Expected: 25%% → analysis pause → 50%% → 100%%"
-	$(KUBECTL) argo rollouts get rollout backend -n sre-copilot --watch || true
+	@echo "    For richer visualization, install the plugin: brew install argoproj/tap/kubectl-argo-rollouts"
+	$(KUBECTL) get rollout backend -n sre-copilot -w || true
 
 demo-reset: ## Reset canary — revert backend Rollout to :latest and promote to stable
 	@echo "==> [demo-reset] Reverting backend Rollout to stable image ($(BACKEND_IMAGE))..."
-	$(KUBECTL) argo rollouts set image backend backend=$(BACKEND_IMAGE) -n sre-copilot
-	$(KUBECTL) argo rollouts promote backend -n sre-copilot --full
+	$(KUBECTL) set image rollout/backend backend=$(BACKEND_IMAGE) -n sre-copilot
+	$(KUBECTL) patch rollout backend -n sre-copilot --type merge -p '{"status":{"pauseConditions":null}}' || true
 	@echo "==> [demo-reset] Rollout reverted to $(BACKEND_IMAGE)"
+	@echo "    For full canary CLI control (promote/abort), install: brew install argoproj/tap/kubectl-argo-rollouts"
 
 smoke: ## Run end-to-end smoke tests (healthz + SSE probe + wall-clock + memory snapshot)
 	@echo "==> Smoke: backend healthz (wall-clock start)..."

@@ -2,7 +2,7 @@
 # Requires argo-rollouts-controller in the cluster. Defaults to false for backwards compat.
 # When enabled, also deploys a separate canary Service (backend-canary) and stable Service
 # (backend-stable) for traffic splitting.
-useArgoRollouts: false
+useArgoRollouts: true
 
 replicaCount: 2
 
