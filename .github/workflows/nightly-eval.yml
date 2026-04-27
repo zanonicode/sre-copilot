@@ -13,12 +13,16 @@ on:
 env:
   PYTHON_VERSION: "3.12"
   JUDGE_PASS_THRESHOLD: ${{ github.event.inputs.pass_threshold || '0.80' }}
+  # Two 7-8B Q4 models running CPU-only on a 4 vCPU runner against 10 records
+  # is ~22-28 min. Unbuffer stdout so progress is visible in real-time —
+  # otherwise pipe-mode block buffering hides everything until process exit.
+  PYTHONUNBUFFERED: "1"
 
 jobs:
   judge-eval:
     name: Layer-2 Llama Judge
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
