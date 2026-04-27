@@ -2,22 +2,33 @@
   "title": "SRE Copilot Overview",
   "uid": "sre-overview",
   "schemaVersion": 36,
-  "refresh": "30s",
-  "time": { "from": "now-1h", "to": "now" },
+  "refresh": "15s",
+  "time": { "from": "now-30m", "to": "now" },
   "panels": [
     {
       "id": 1,
       "type": "stat",
       "title": "Request Rate",
-      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "description": "HTTP requests/sec across all backend endpoints (1m rate)",
+      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 0 },
       "datasource": { "uid": "prometheus" },
       "fieldConfig": {
-        "defaults": { "unit": "reqps", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } }
+        "defaults": {
+          "unit": "reqps",
+          "decimals": 2,
+          "noValue": "0",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        }
       },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "graphMode": "area",
+        "colorMode": "value",
+        "textMode": "auto"
+      },
       "targets": [
         {
-          "expr": "sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\"}[5m]))",
+          "expr": "sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\"}[1m])) or vector(0)",
           "legendFormat": "req/s",
           "refId": "A"
         }
@@ -26,22 +37,35 @@
     {
       "id": 2,
       "type": "stat",
-      "title": "Error Rate",
-      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "title": "5xx Error Rate",
+      "description": "Fraction of responses with 5xx status (1m rolling). Wrapped with vector(0) so an idle service shows 0%, not 'No data'.",
+      "gridPos": { "h": 5, "w": 6, "x": 6, "y": 0 },
       "datasource": { "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit",
+          "decimals": 2,
+          "noValue": "0",
+          "max": 1,
           "thresholds": {
             "mode": "absolute",
-            "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 0.01 }, { "color": "red", "value": 0.05 }]
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.01 },
+              { "color": "red", "value": 0.05 }
+            ]
           }
         }
       },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "graphMode": "area",
+        "colorMode": "value",
+        "textMode": "auto"
+      },
       "targets": [
         {
-          "expr": "(sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\",http_status_code=~\"5..\"}[5m])) or vector(0)) / clamp_min(sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\"}[5m])), 1)",
+          "expr": "(sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\",http_response_status_code=~\"5..\"}[1m])) or vector(0)) / clamp_min(sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\"}[1m])), 1) or vector(0)",
           "legendFormat": "5xx rate",
           "refId": "A"
         }
@@ -51,21 +75,33 @@
       "id": 3,
       "type": "stat",
       "title": "Backend Pods Ready",
-      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "description": "Count of backend pods in Ready state. Healthy = 2/2.",
+      "gridPos": { "h": 5, "w": 6, "x": 12, "y": 0 },
       "datasource": { "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "unit": "short",
+          "decimals": 0,
+          "noValue": "0",
           "thresholds": {
             "mode": "absolute",
-            "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 1 }, { "color": "green", "value": 2 }]
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "green", "value": 2 }
+            ]
           }
         }
       },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "graphMode": "area",
+        "colorMode": "value",
+        "textMode": "auto"
+      },
       "targets": [
         {
-          "expr": "sum(kube_pod_status_ready{namespace=\"sre-copilot\",condition=\"true\"} and on(pod,namespace) kube_pod_info{namespace=\"sre-copilot\",pod=~\"backend-.*\"}) or vector(0)",
+          "expr": "count(kube_pod_status_phase{namespace=\"sre-copilot\",pod=~\"backend-.*\",phase=\"Running\"} == 1) or vector(0)",
           "legendFormat": "ready",
           "refId": "A"
         }
@@ -74,25 +110,167 @@
     {
       "id": 4,
       "type": "stat",
-      "title": "Availability SLO (7d)",
-      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "title": "Availability (1h)",
+      "description": "Rolling 1-hour availability: 1 - 5xx_rate. Replaced 7d window — kind clusters never have 7 days of history.",
+      "gridPos": { "h": 5, "w": 6, "x": 18, "y": 0 },
       "datasource": { "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit",
+          "decimals": 3,
           "min": 0.95,
           "max": 1.0,
+          "noValue": "100%",
           "thresholds": {
             "mode": "absolute",
-            "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 0.99 }, { "color": "green", "value": 0.999 }]
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 0.99 },
+              { "color": "green", "value": 0.999 }
+            ]
           }
         }
       },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "graphMode": "area",
+        "colorMode": "value",
+        "textMode": "auto"
+      },
       "targets": [
         {
-          "expr": "1 - ((sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\",http_status_code=~\"5..\"}[7d])) or vector(0)) / clamp_min(sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\"}[7d])), 1))",
+          "expr": "1 - ((sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\",http_response_status_code=~\"5..\"}[1h])) or vector(0)) / clamp_min(sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\"}[1h])), 1))",
           "legendFormat": "availability",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Active LLM Requests",
+      "description": "In-flight Ollama calls right now (LLM_ACTIVE gauge). >0 means streams in progress.",
+      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 5 },
+      "datasource": { "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 4 },
+              { "color": "red", "value": 8 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "graphMode": "area",
+        "colorMode": "value",
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "sum(llm_active_requests) or vector(0)",
+          "legendFormat": "active",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "p95 LLM Time-to-First-Token",
+      "description": "95th percentile of TTFT over 5m. The canary AnalysisTemplate gates on this — must stay <2s.",
+      "gridPos": { "h": 5, "w": 6, "x": 6, "y": 5 },
+      "datasource": { "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 2,
+          "noValue": "—",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1.0 },
+              { "color": "red", "value": 2.0 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "graphMode": "area",
+        "colorMode": "value",
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(llm_ttft_seconds_bucket[5m])))",
+          "legendFormat": "p95 TTFT",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "stat",
+      "title": "LLM Tokens/sec",
+      "description": "Output tokens emitted per second across all LLM streams (1m rate).",
+      "gridPos": { "h": 5, "w": 6, "x": 12, "y": 5 },
+      "datasource": { "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1,
+          "noValue": "0",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "graphMode": "area",
+        "colorMode": "value",
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(llm_output_tokens_total[1m])) or vector(0)",
+          "legendFormat": "tok/s",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "stat",
+      "title": "Memory (avg)",
+      "description": "Average resident memory across backend pods. Container limit is set per Helm values.",
+      "gridPos": { "h": 5, "w": 6, "x": 18, "y": 5 },
+      "datasource": { "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "decbytes",
+          "decimals": 0,
+          "noValue": "—",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "graphMode": "area",
+        "colorMode": "value",
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "avg(container_memory_working_set_bytes{namespace=\"sre-copilot\",pod=~\"backend-.*\",container!=\"\",container!=\"POD\"})",
+          "legendFormat": "rss",
           "refId": "A"
         }
       ]
@@ -101,19 +279,62 @@
       "id": 5,
       "type": "timeseries",
       "title": "Request Rate Over Time",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "description": "Total req/s vs 5xx-only req/s (1m rate)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
       "datasource": { "uid": "prometheus" },
-      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": { "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": true }
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+      },
       "targets": [
         {
-          "expr": "sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\"}[5m]))",
+          "expr": "sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\"}[1m]))",
           "legendFormat": "total",
           "refId": "A"
         },
         {
-          "expr": "sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\",http_status_code=~\"5..\"}[5m]))",
+          "expr": "sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\",http_response_status_code=~\"5..\"}[1m]))",
           "legendFormat": "5xx",
           "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "LLM Latency (p50 / p95 / p99 TTFT)",
+      "description": "Time-to-first-token quantiles. p95 above 2s fails the canary AnalysisTemplate.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+      "datasource": { "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "lineWidth": 2, "fillOpacity": 5, "showPoints": "never" }
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(llm_ttft_seconds_bucket[5m])))",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(llm_ttft_seconds_bucket[5m])))",
+          "legendFormat": "p95",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(llm_ttft_seconds_bucket[5m])))",
+          "legendFormat": "p99",
+          "refId": "C"
         }
       ]
     },
@@ -121,12 +342,13 @@
       "id": 6,
       "type": "logs",
       "title": "Backend Logs",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "description": "Live tail of backend logs from Loki, filtered to errors and warnings if any.",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 18 },
       "datasource": { "uid": "loki" },
-      "options": { "showTime": true, "sortOrder": "Descending", "dedupStrategy": "none" },
+      "options": { "showTime": true, "sortOrder": "Descending", "dedupStrategy": "none", "wrapLogMessage": true },
       "targets": [
         {
-          "expr": "{service_name=\"sre-copilot-backend\"}",
+          "expr": "{service_name=\"sre-copilot-backend\"} | json | line_format \"{{.severity}} {{.body}} {{.attributes_endpoint}}\"",
           "refId": "A"
         }
       ]
