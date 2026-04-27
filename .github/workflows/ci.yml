@@ -92,7 +92,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: pip install yamllint
       - name: yamllint helmfile
-        run: yamllint -d relaxed helmfile.yaml
+        run: yamllint -d relaxed helmfile.yaml.gotmpl
       - name: yamllint ci
         run: yamllint -d relaxed .github/workflows/ci.yml
 
