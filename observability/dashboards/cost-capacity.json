@@ -119,12 +119,12 @@
       },
       "targets": [
         {
-          "expr": "(sum(rate(llm_tokens_output_total[10m])) or vector(0)) / clamp_min(sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\",http_route=~\"/analyze/.*|/generate/.*\"}[10m])), 1)",
+          "expr": "(sum(rate(llm_tokens_output_total[10m])) or vector(0)) / clamp_min(sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\",http_target=~\"/analyze/.*|/generate/.*\"}[10m])), 1)",
           "legendFormat": "output tokens/call",
           "refId": "A"
         },
         {
-          "expr": "(sum(rate(llm_tokens_input_total[10m])) or vector(0)) / clamp_min(sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\",http_route=~\"/analyze/.*|/generate/.*\"}[10m])), 1)",
+          "expr": "(sum(rate(llm_tokens_input_total[10m])) or vector(0)) / clamp_min(sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\",http_target=~\"/analyze/.*|/generate/.*\"}[10m])), 1)",
           "legendFormat": "input tokens/call",
           "refId": "B"
         }

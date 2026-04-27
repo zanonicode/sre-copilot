@@ -883,9 +883,9 @@ data:
         },
         {
           "id": 7,
-          "type": "table",
+          "type": "traces",
           "title": "Recent LLM Traces",
-          "description": "Latest ollama.host_call spans from Tempo. Click a trace ID to drill into the full span tree (Explore \u2192 Tempo).",
+          "description": "Latest ollama.host_call spans from Tempo. Click any row to expand the full span tree (POST /analyze/logs \u2192 ollama.host_call \u2192 ollama.inference synthetic).",
           "gridPos": {
             "h": 10,
             "w": 24,
@@ -898,39 +898,11 @@ data:
           "targets": [
             {
               "queryType": "traceql",
-              "query": "{resource.service.name=\"sre-copilot-backend\" && name=\"ollama.host_call\"} | select(span.llm.model, span.llm.input_tokens)",
+              "query": "{resource.service.name=\"sre-copilot-backend\" && name=\"ollama.host_call\"}",
               "limit": 20,
-              "tableType": "traces",
               "refId": "A"
             }
-          ],
-          "fieldConfig": {
-            "defaults": {
-              "custom": {
-                "align": "auto",
-                "displayMode": "auto"
-              }
-            },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Trace ID"
-                },
-                "properties": [
-                  {
-                    "id": "links",
-                    "value": [
-                      {
-                        "title": "Open in Explore",
-                        "url": "/explore?left=%7B%22datasource%22:%22tempo%22,%22queries%22:%5B%7B%22query%22:%22${__value.raw}%22%7D%5D%7D"
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
+          ]
         }
       ]
     }
@@ -1374,12 +1346,12 @@ data:
           },
           "targets": [
             {
-              "expr": "(sum(rate(llm_tokens_output_total[10m])) or vector(0)) / clamp_min(sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\",http_route=~\"/analyze/.*|/generate/.*\"}[10m])), 1)",
+              "expr": "(sum(rate(llm_tokens_output_total[10m])) or vector(0)) / clamp_min(sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\",http_target=~\"/analyze/.*|/generate/.*\"}[10m])), 1)",
               "legendFormat": "output tokens/call",
               "refId": "A"
             },
             {
-              "expr": "(sum(rate(llm_tokens_input_total[10m])) or vector(0)) / clamp_min(sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\",http_route=~\"/analyze/.*|/generate/.*\"}[10m])), 1)",
+              "expr": "(sum(rate(llm_tokens_input_total[10m])) or vector(0)) / clamp_min(sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\",http_target=~\"/analyze/.*|/generate/.*\"}[10m])), 1)",
               "legendFormat": "input tokens/call",
               "refId": "B"
             }
