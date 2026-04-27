@@ -80,6 +80,12 @@ up: ## Bootstrap kind + ArgoCD; ArgoCD then reconciles all releases (GitOps)
 	$(KUBECTL) apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/$(ARGOCD_VERSION)/manifests/install.yaml
 	@echo "    Waiting for argocd-server to be ready (up to 5 min)..."
 	$(KUBECTL) rollout status -n argocd deployment/argocd-server --timeout=300s
+	@# Race fix: app-of-apps reconciles in <1s, but repo-server's gRPC listener
+	@# binds a beat later. If root-app hits repo-server before it's listening,
+	@# ArgoCD caches a sticky ComparisonError ("connection refused") and child
+	@# Apps are never generated. Wait for repo-server before applying root.
+	@echo "    Waiting for argocd-repo-server to be ready (up to 5 min)..."
+	$(KUBECTL) rollout status -n argocd deployment/argocd-repo-server --timeout=300s
 	@echo "==> [5/5] Applying root Application (ArgoCD reconciles all releases via app-of-apps)..."
 	$(KUBECTL) apply -f argocd/bootstrap/root-app.yaml -n argocd
 	@echo ""
@@ -254,7 +260,7 @@ smoke: ## Run end-to-end smoke tests (healthz + SSE + ingress + Ollama + memory 
 	python3 tests/smoke/probe_sse.py || echo "  WARNING: SSE probe failed"; \
 	echo "==> Smoke: ingress URL reachability..."; \
 	curl -sf -o /dev/null -w "  Ingress HTTP status: %{http_code}\n" --max-time 10 \
-	     https://$(INGRESS_HOST)/healthz 2>/dev/null || \
+	     https://api.$(INGRESS_HOST)/healthz 2>/dev/null || \
 	     echo "  WARNING: ingress URL not reachable"; \
 	echo "==> Smoke: Ollama reachability through ExternalName service..."; \
 	BPOD=$$($(KUBECTL) get pod -n sre-copilot -l app.kubernetes.io/name=backend -o name | head -1); \
