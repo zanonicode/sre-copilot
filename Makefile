@@ -93,7 +93,7 @@ down: ## Destroy kind cluster and clean Terraform state
 	kind delete cluster --name $(CLUSTER_NAME) || true
 	@echo "==> Cluster destroyed"
 
-demo: ## Run the full 7-minute demo script (requires make up first) — see docs/loom-script.md
+demo: ## Run the ~5-minute demo script (anomaly + traces + postmortem + resilience). Run make demo-canary separately for the canary beat.
 	@echo "==> [Beat 0:00] Opening browser tabs..."
 	@open https://$(INGRESS_HOST) 2>/dev/null || xdg-open https://$(INGRESS_HOST) 2>/dev/null || true
 	@echo "    Open Grafana manually if port-forward is not running:"
@@ -115,16 +115,14 @@ demo: ## Run the full 7-minute demo script (requires make up first) — see docs
 	@echo ""
 	@echo "==> [Beat 3:30] Postmortem bridge — click 'Generate postmortem from this incident' in UI"
 	@echo ""
-	@echo "==> [Beat 4:30] Canary moment — triggering make demo-canary..."
-	$(MAKE) demo-canary
-	@echo ""
-	@echo "==> [Beat 6:30] Resilience beat — deleting one backend pod..."
+	@echo "==> [Beat 4:30] Resilience beat — deleting one backend pod..."
 	@$(KUBECTL) delete pod -n sre-copilot -l app.kubernetes.io/name=backend --field-selector=status.phase=Running \
 	     --wait=false 2>/dev/null | head -1 || true
 	@echo "    Watch: kubectl get pods -n sre-copilot -l app.kubernetes.io/name=backend -w"
 	@echo "    PDB keeps service available (minAvailable=1). Replacement Ready in <30s."
 	@echo ""
-	@echo "==> Demo complete. See docs/loom-script.md for the full narrative."
+	@echo "==> Demo complete. For the canary moment, run: make demo-canary"
+	@echo "    See docs/loom-script.md for the full narrative."
 
 demo-canary: ## Build backend:v2, load into kind, bump Rollout image, watch progression
 	@echo "==> [demo-canary] Building backend:v2 image (adds confidence: float field)..."
