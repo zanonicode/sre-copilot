@@ -5,6 +5,9 @@
 service:
   type: ClusterIP
 
+deployment:
+  revisionHistoryLimit: 3
+
 ports:
   web:
     port: 80

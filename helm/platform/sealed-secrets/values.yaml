@@ -1,4 +1,5 @@
 fullnameOverride: sealed-secrets
+revisionHistoryLimit: 3
 
 controller:
   resources:

@@ -1,5 +1,6 @@
 server:
   retention: 12h
+  revisionHistoryLimit: 3
   resources:
     requests:
       cpu: 200m

@@ -1,5 +1,9 @@
 adminPassword: "sre-copilot-admin"
 
+# Cap stale ReplicaSet accumulation — default is 10, which clutters
+# the cluster on a long-lived dev kind setup.
+revisionHistoryLimit: 3
+
 resources:
   requests:
     cpu: 100m

@@ -147,6 +147,26 @@ demo-reset: ## Reset canary — revert backend Rollout to :latest and promote to
 	@echo "==> [demo-reset] Rollout reverted to $(BACKEND_IMAGE)"
 	@echo "    For full canary CLI control (promote/abort), install: brew install argoproj/tap/kubectl-argo-rollouts"
 
+restart-backend: ## Trigger an in-place restart of the backend Rollout (Argo-Rollouts native, no plugin needed)
+	@echo "==> [restart-backend] Setting spec.restartAt — Argo Rollouts will roll pods respecting canary strategy..."
+	$(KUBECTL) patch rollout backend -n sre-copilot --type=merge \
+	     -p "{\"spec\":{\"restartAt\":\"$$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}"
+	@echo "==> [restart-backend] Watching pods... (Ctrl+C to stop)"
+	$(KUBECTL) get pods -n sre-copilot -l app.kubernetes.io/name=backend -w || true
+
+clean-replicasets: ## Delete all ReplicaSets with 0 desired/current/ready replicas across managed namespaces
+	@echo "==> [clean-replicasets] Pruning idle ReplicaSets across managed namespaces..."
+	@for ns in argocd observability platform sre-copilot; do \
+	  echo "  -- namespace: $$ns"; \
+	  $(KUBECTL) get rs -n $$ns -o json 2>/dev/null \
+	    | jq -r '.items[] | select(.spec.replicas==0 and (.status.replicas//0)==0 and (.status.readyReplicas//0)==0) | .metadata.name' \
+	    | while read rs; do \
+	        [ -z "$$rs" ] && continue; \
+	        $(KUBECTL) delete rs -n $$ns "$$rs" --wait=false; \
+	      done; \
+	done
+	@echo "==> [clean-replicasets] Done. Going forward, revisionHistoryLimit=3 on backend/frontend prevents new accumulation."
+
 smoke: ## Run end-to-end smoke tests (healthz + SSE + ingress + Ollama + memory + NP egress)
 	@$(KUBECTL) port-forward -n sre-copilot svc/backend 8000:8000 > /tmp/sre-smoke-pf.log 2>&1 & \
 	PF=$$!; trap "kill $$PF 2>/dev/null" EXIT; \

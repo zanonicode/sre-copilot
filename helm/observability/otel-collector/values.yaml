@@ -1,5 +1,6 @@
 mode: deployment
 replicaCount: 1
+revisionHistoryLimit: 3
 fullnameOverride: otel-collector
 
 image:
