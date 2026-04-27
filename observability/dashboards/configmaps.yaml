@@ -885,7 +885,7 @@ data:
           "id": 7,
           "type": "traces",
           "title": "Recent LLM Traces",
-          "description": "Latest ollama.host_call spans from Tempo. Click any row to expand the full span tree (POST /analyze/logs \u2192 ollama.host_call \u2192 ollama.inference synthetic).",
+          "description": "Latest ollama.host_call spans from Tempo (filesystem backend uses nativeSearch, not backend TraceQL search).",
           "gridPos": {
             "h": 10,
             "w": 24,
@@ -897,8 +897,9 @@ data:
           },
           "targets": [
             {
-              "queryType": "traceql",
-              "query": "{resource.service.name=\"sre-copilot-backend\" && name=\"ollama.host_call\"}",
+              "queryType": "nativeSearch",
+              "serviceName": "sre-copilot-backend",
+              "spanName": "ollama.host_call",
               "limit": 20,
               "refId": "A"
             }

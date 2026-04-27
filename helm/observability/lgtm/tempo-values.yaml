@@ -43,8 +43,24 @@ tempo:
     frontend_worker:
       frontend_address: localhost:9095
 
+  # Enable metrics_generator with local-blocks processor — required so
+  # Grafana's Tempo plugin can run TraceQL search on filesystem storage.
+  # Without this, queries fail with "backend TraceQL search queries are
+  # not supported" even though /api/search via curl works fine.
   metrics_generator:
-    enabled: false
+    enabled: true
+    processor:
+      local_blocks:
+        filter_server_spans: false
+        flush_to_storage: true
+
+# Apply the local-blocks processor as a default for all tenants (we run
+# multitenancy_enabled: false, so this is the implicit single-tenant config).
+overrides:
+  defaults:
+    metrics_generator:
+      processors:
+        - local-blocks
 
 persistence:
   enabled: false

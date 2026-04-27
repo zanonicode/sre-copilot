@@ -159,13 +159,30 @@
       "id": 7,
       "type": "traces",
       "title": "Recent LLM Traces",
-      "description": "Latest ollama.host_call spans from Tempo. Click any row to expand the full span tree (POST /analyze/logs → ollama.host_call → ollama.inference synthetic).",
+      "description": "Latest ollama.host_call spans from Tempo. Requires Tempo's metrics_generator with local-blocks processor to support TraceQL search on filesystem backend.",
       "gridPos": { "h": 10, "w": 24, "x": 0, "y": 12 },
       "datasource": { "uid": "tempo" },
       "targets": [
         {
-          "queryType": "traceql",
-          "query": "{resource.service.name=\"sre-copilot-backend\" && name=\"ollama.host_call\"}",
+          "queryType": "traceqlSearch",
+          "filters": [
+            {
+              "id": "service-name",
+              "tag": "service.name",
+              "operator": "=",
+              "scope": "resource",
+              "value": ["sre-copilot-backend"],
+              "valueType": "string"
+            },
+            {
+              "id": "span-name",
+              "tag": "name",
+              "operator": "=",
+              "scope": "intrinsic",
+              "value": "ollama.host_call",
+              "valueType": "string"
+            }
+          ],
           "limit": 20,
           "refId": "A"
         }
