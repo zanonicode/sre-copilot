@@ -17,7 +17,7 @@ LLM_JUDGE_MODEL ?= llama3.1:8b-instruct-q4_K_M
 INGRESS_HOST    ?= sre-copilot.localtest.me
 export LLM_MODEL LLM_JUDGE_MODEL INGRESS_HOST
 
-.PHONY: help up down seed-models demo demo-canary demo-reset smoke lint test seal detect-bridge judge restart-backend clean-replicasets trust-certs dashboards
+.PHONY: help up down seed-models demo demo-canary demo-reset smoke lint test seal detect-bridge judge restart-backend clean-replicasets trust-certs dashboards dashboards-reset
 
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -231,6 +231,15 @@ dashboards: ## Regenerate Grafana ConfigMaps from observability/dashboards/*.jso
 	     -f observability/dashboards/configmaps.yaml
 	@echo "==> [dashboards] Done. Hard-refresh Grafana (Cmd-Shift-R) to see updates."
 	@echo "    URL: https://grafana.$(INGRESS_HOST)"
+
+dashboards-reset: ## Force-reload all dashboards (delete ConfigMaps, regen, re-apply). Use when 'make dashboards' doesn't seem to take effect.
+	@echo "==> [dashboards-reset] Deleting existing dashboard ConfigMaps so Grafana drops them from DB..."
+	$(KUBECTL) delete configmap -n observability -l grafana_dashboard=1 --ignore-not-found 2>&1 | tail -10
+	@echo "==> [dashboards-reset] Waiting for Grafana sidecar to remove the files..."
+	@sleep 8
+	@echo "==> [dashboards-reset] Re-applying fresh ConfigMaps..."
+	$(MAKE) dashboards
+	@echo "==> [dashboards-reset] Done. Grafana will re-import each dashboard on next poll (~10s)."
 
 smoke: ## Run end-to-end smoke tests (healthz + SSE + ingress + Ollama + memory + NP egress)
 	@$(KUBECTL) port-forward -n sre-copilot svc/backend 8000:8000 > /tmp/sre-smoke-pf.log 2>&1 & \
