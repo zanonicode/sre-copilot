@@ -1,0 +1,13 @@
+{
+  "id": "hdfs_002",
+  "source": "loghub/hdfs",
+  "block_id": "blk_7503483334202473044",
+  "log_snippet": "081109 210345 78 WARN dfs.DataNode: IOException in offerService\n081109 210346 78 ERROR dfs.DataNode: DatanodeRegistered at namenode: 10.251.73.220:9000 error\n081109 210347 78 INFO dfs.FSNamesystem: BLOCK* ask 10.251.65.102:50010 to replicate blk_7503483334202473044 to datanode(s) 10.251.66.33:50010",
+  "expected": {
+    "severity": "warning",
+    "root_cause_keywords": ["DataNode registration failure", "NameNode connectivity", "replication triggered"],
+    "must_not_hallucinate": ["disk failure", "RAID", "filesystem corruption"],
+    "runbook_must_include": ["check NameNode logs", "verify DataNode registration", "hdfs dfsadmin"]
+  },
+  "notes": "DataNode losing NameNode registration, triggering automatic re-replication of affected blocks."
+}

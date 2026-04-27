@@ -1,0 +1,5 @@
+replicaCount: 1
+image:
+  pullPolicy: Never
+env:
+  NEXT_PUBLIC_API_URL: "http://localhost:8000"

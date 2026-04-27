@@ -1,0 +1,12 @@
+{
+  "id": "synth_004",
+  "source": "synthetic/slow_degradation",
+  "log_snippet": "request duration p50=120ms p95=1850ms p99=4200ms\nrequest duration p50=140ms p95=2900ms p99=6100ms\nrequest duration p50=180ms p95=4100ms p99=8800ms\nHPA scaled backend from 2 to 3 replicas\nrequest duration p50=130ms p95=1600ms p99=3200ms\nHPA scaled backend from 3 to 4 replicas",
+  "expected": {
+    "severity": "warning",
+    "root_cause_keywords": ["latency increase", "HPA scaling", "load increase", "p95 degradation"],
+    "must_not_hallucinate": ["memory leak", "connection pool exhausted", "database slow"],
+    "runbook_must_include": ["check upstream LLM latency", "review HPA events", "check Ollama load"]
+  },
+  "notes": "Organic load increase triggering HPA scale-out — severity warning because service recovers, not critical."
+}

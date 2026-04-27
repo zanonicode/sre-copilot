@@ -1,0 +1,12 @@
+{
+  "id": "synth_003",
+  "source": "synthetic/ollama_unreachable",
+  "log_snippet": "APIConnectionError: Connection refused connecting to http://ollama.sre-copilot.svc.cluster.local:11434/v1\nRetrying after 1s...\nAPIConnectionError: Connection refused\nHTTP 503 returned to client\nspan.status=ERROR reason=ollama_unreachable",
+  "expected": {
+    "severity": "critical",
+    "root_cause_keywords": ["Ollama unreachable", "connection refused", "LLM backend unavailable", "ExternalName service"],
+    "must_not_hallucinate": ["GPU failure", "CUDA error", "model weights corrupted"],
+    "runbook_must_include": ["verify ollama serve is running on host", "check host.docker.internal resolution", "curl http://localhost:11434"]
+  },
+  "notes": "Ollama not running on host — the ExternalName service cannot resolve. Most common cold-start failure mode."
+}

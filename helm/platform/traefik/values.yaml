@@ -1,0 +1,46 @@
+service:
+  type: NodePort
+  nodePorts:
+    web: 80
+    websecure: 443
+
+ports:
+  web:
+    redirectTo:
+      port: websecure
+  websecure:
+    tls:
+      enabled: true
+
+ingressRoute:
+  dashboard:
+    enabled: false
+
+providers:
+  kubernetesIngress:
+    enabled: true
+    publishedService:
+      enabled: true
+
+logs:
+  general:
+    level: WARN
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 64Mi
+  limits:
+    cpu: 300m
+    memory: 128Mi
+
+nodeSelector:
+  ingress-ready: "true"
+
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
+
+additionalArguments:
+  - "--serversTransport.insecureSkipVerify=true"

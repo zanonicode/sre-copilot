@@ -1,0 +1,13 @@
+LOGS:
+081109 203518 143 INFO dfs.DataNode$DataXceiver: Receiving block blk_-1608999687919862906 src: /10.251.73.220:54106 dest: /10.251.73.220:50010
+081109 203519 143 INFO dfs.DataNode$PacketResponder: PacketResponder 1 for block blk_-1608999687919862906 terminating
+081109 203518 35 INFO dfs.DataNode$DataXceiver: Receiving block blk_-1608999687919862906 src: /10.251.75.228:52470 dest: /10.251.75.228:50010
+081109 203519 35 ERROR dfs.DataNode$DataXceiver: 10.251.75.228:50010:DataXceiver: blk_-1608999687919862906 Got exception while serving blk_-1608999687919862906 to /10.251.73.220
+java.io.IOException: Connection reset by peer
+081109 203520 35 WARN dfs.DataNode: IOException in offerService
+081109 203520 35 ERROR dfs.DataNode: DatanodeRegistered at namenode: 10.251.73.220:9000 error
+081109 203521 35 INFO dfs.DataNode: BLOCK* NameSystem.addStoredBlock: blockMap updated: 10.251.75.228:50010 is added to blk_-1608999687919862906 size 67108864
+081109 203522 35 ERROR dfs.DataNode: DataNode is shutting down: java.io.IOException: Failed to write block blk_-1608999687919862906 to mirror 10.251.73.220
+
+ANALYSIS:
+{"severity":"critical","summary":"DataNode 10.251.75.228 lost connectivity to its replication mirror during block write, causing DataNode shutdown after IOException.","root_cause":"Network connection reset between DataNode 10.251.75.228 (port 50010) and mirror 10.251.73.220 during block blk_-1608999687919862906 replication. Root cause: intermittent network partition or ephemeral port exhaustion on the source node.","runbook":["Check network connectivity between 10.251.75.228 and 10.251.73.220: ping + traceroute","Inspect dmesg and /var/log/syslog on both nodes for TCP RST or interface flap events","Check DataNode error counters: hdfs dfsadmin -report","Restart the failed DataNode after network is confirmed stable: hadoop-daemon.sh start datanode","Monitor block replication recovery: hdfs fsck / -list-corruptfileblocks"],"related_metrics":["dfs_datanode_blocks_written_total","dfs_datanode_bytes_written_total","node_network_transmit_errs_total{device='eth0'}","hdfs_namenode_under_replicated_blocks"]}

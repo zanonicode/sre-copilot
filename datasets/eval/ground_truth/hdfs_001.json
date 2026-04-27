@@ -1,0 +1,13 @@
+{
+  "id": "hdfs_001",
+  "source": "loghub/hdfs",
+  "block_id": "blk_-1608999687919862906",
+  "log_snippet": "081109 203519 35 ERROR dfs.DataNode$DataXceiver: 10.251.75.228:50010:DataXceiver: blk_-1608999687919862906 Got exception while serving blk_-1608999687919862906\njava.io.IOException: Connection reset by peer\n081109 203522 35 ERROR dfs.DataNode: DataNode is shutting down: java.io.IOException: Failed to write block blk_-1608999687919862906 to mirror 10.251.73.220",
+  "expected": {
+    "severity": "critical",
+    "root_cause_keywords": ["connection reset", "DataNode shutdown", "replication failure", "IOException"],
+    "must_not_hallucinate": ["ZooKeeper", "Kafka", "Spark", "YARN ResourceManager"],
+    "runbook_must_include": ["restart DataNode", "check network", "dfsadmin -report"]
+  },
+  "notes": "Classic HDFS DataNode network partition causing block replication failure and DataNode self-shutdown."
+}

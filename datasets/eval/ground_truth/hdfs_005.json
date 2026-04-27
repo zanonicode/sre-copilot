@@ -1,0 +1,13 @@
+{
+  "id": "hdfs_005",
+  "source": "loghub/hdfs",
+  "block_id": "blk_-9073992586687739851",
+  "log_snippet": "081110 112203 199 ERROR dfs.DataNode$DataXceiver: 10.251.107.45:50010:DataXceiver: blk_-9073992586687739851 Got exception while serving blk_-9073992586687739851 to /10.251.65.102\njava.io.IOException: Broken pipe\n081110 112204 199 WARN dfs.DataNode: IOException in offerService\n081110 112206 199 ERROR dfs.DataNode: DataNode is shutting down: java.io.IOException: Failed to write block blk_-9073992586687739851",
+  "expected": {
+    "severity": "critical",
+    "root_cause_keywords": ["Broken pipe", "DataNode shutdown", "block write failure"],
+    "must_not_hallucinate": ["kernel panic", "hardware failure confirmed", "disk dead"],
+    "runbook_must_include": ["restart DataNode 10.251.107.45", "check network", "fsck -list-corruptfileblocks"]
+  },
+  "notes": "Broken pipe variant of DataNode failure — client disconnected mid-write causing DataNode to shut down."
+}

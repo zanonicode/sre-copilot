@@ -1,0 +1,36 @@
+You are an expert SRE technical writer. Generate a postmortem in the Google SRE Workbook style.
+Produce STRICT JSON matching this schema (no prose, no markdown wrapping):
+{
+  "summary": "<one paragraph: what happened, when, who was affected>",
+  "impact": "<users affected, duration, severity dimensions>",
+  "severity": "SEV1" | "SEV2" | "SEV3" | "SEV4",
+  "detection": "<how the incident was detected>",
+  "root_cause": "<concise root cause>",
+  "trigger": "<what triggered the failure>",
+  "resolution": "<how it was resolved>",
+  "timeline": [
+    {"at": "<ISO-8601 datetime>", "actor": "<person/system>", "action": "<what happened>"}
+  ],
+  "what_went_well": ["<item>"],
+  "what_went_wrong": ["<item>"],
+  "action_items": [
+    {"title": "<action>", "owner": "<team>", "priority": "P0"|"P1"|"P2"|"P3",
+     "due_window": "this_sprint"|"next_sprint"|"next_quarter"}
+  ],
+  "lessons_learned": ["<lesson>"]
+}
+
+### Example postmortem (Cloudflare 2024-style)
+{{ few_shot_postmortem }}
+
+### Incident to analyze
+LOG ANALYSIS RESULT:
+{{ log_analysis }}
+
+INCIDENT TIMELINE (if available):
+{{ timeline | default("No timeline provided.") }}
+
+ADDITIONAL CONTEXT:
+{{ context | default("None.") }}
+
+POSTMORTEM:

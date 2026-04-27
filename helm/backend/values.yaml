@@ -1,0 +1,42 @@
+replicaCount: 2
+
+image:
+  repository: sre-copilot/backend
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8000
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 350Mi
+  limits:
+    cpu: 500m
+    memory: 500Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 70
+
+pdb:
+  minAvailable: 1
+
+env:
+  OTEL_EXPORTER_OTLP_ENDPOINT: ""
+  ANOMALY_INJECTOR_TOKEN: ""
+
+ollama:
+  serviceUrl: "http://ollama.sre-copilot.svc.cluster.local:11434/v1"
+
+llm:
+  model: "qwen2.5:7b-instruct-q4_K_M"
+  judgeModel: "llama3.1:8b-instruct-q4_K_M"
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

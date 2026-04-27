@@ -1,0 +1,13 @@
+{
+  "id": "hdfs_003",
+  "source": "loghub/hdfs",
+  "block_id": "blk_-3544583377289625738",
+  "log_snippet": "081110 021832 143 ERROR dfs.DataNode$DataXceiver: 10.251.75.228:50010 Got exception while serving blk_-3544583377289625738\njava.io.IOException: Connection reset by peer\n081110 021833 143 WARN dfs.DataNode$DataXceiver: DFSClient 10.251.73.220:52891 got Exception for block blk_-3544583377289625738\n081110 021835 143 ERROR dfs.DataNode: DataNode is shutting down: java.io.IOException: Failed to write block blk_-3544583377289625738 to mirror 10.251.107.45",
+  "expected": {
+    "severity": "critical",
+    "root_cause_keywords": ["DataNode shutdown", "mirror write failure", "Connection reset"],
+    "must_not_hallucinate": ["S3", "GCS", "Azure Blob", "object storage"],
+    "runbook_must_include": ["restart DataNode", "check network connectivity", "fsck"]
+  },
+  "notes": "Second DataNode failure pattern — nearly identical to hdfs_001, tests model consistency."
+}

@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: backend
+    app.kubernetes.io/instance: {{ .Release.Name }}
+data:
+  OLLAMA_BASE_URL: {{ .Values.ollama.serviceUrl | quote }}
+  LLM_MODEL: {{ .Values.llm.model | quote }}
+  LLM_JUDGE_MODEL: {{ .Values.llm.judgeModel | quote }}
+  OTEL_EXPORTER_OTLP_ENDPOINT: {{ .Values.env.OTEL_EXPORTER_OTLP_ENDPOINT | quote }}

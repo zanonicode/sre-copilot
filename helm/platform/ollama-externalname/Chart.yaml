@@ -1,0 +1,5 @@
+apiVersion: v2
+name: ollama-externalname
+description: ExternalName Service routing cluster traffic to host Ollama process.
+type: application
+version: 0.1.0

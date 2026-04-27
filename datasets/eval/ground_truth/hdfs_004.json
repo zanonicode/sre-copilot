@@ -1,0 +1,13 @@
+{
+  "id": "hdfs_004",
+  "source": "loghub/hdfs",
+  "block_id": "blk_4611686018427388000",
+  "log_snippet": "081110 034512 35 WARN dfs.DataNode$DataXceiver: DFSClient 10.251.66.33:53201 got Exception for block blk_4611686018427388000\n081110 034513 35 INFO dfs.FSNamesystem: BLOCK* ask 10.251.75.228:50010 to replicate blk_4611686018427388000 to datanode(s) 10.251.73.220:50010\n081110 034515 35 INFO dfs.FSNamesystem: BLOCK* NameSystem.addStoredBlock: blockMap updated: 10.251.73.220:50010 is added to blk_4611686018427388000 size 134217728",
+  "expected": {
+    "severity": "warning",
+    "root_cause_keywords": ["DFSClient exception", "block replication recovery", "under-replicated"],
+    "must_not_hallucinate": ["database corruption", "HDFS format", "namenode restart required"],
+    "runbook_must_include": ["monitor replication", "hdfs fsck", "dfsadmin -report"]
+  },
+  "notes": "Under-replication recovery event — system self-heals; severity should be warning, not critical."
+}

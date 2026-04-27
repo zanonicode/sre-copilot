@@ -1,0 +1,12 @@
+{
+  "id": "synth_005",
+  "source": "synthetic/normal_traffic",
+  "log_snippet": "GET /healthz 200 2ms\nPOST /analyze/logs 200 3420ms (1287 tokens)\nPOST /analyze/logs 200 2980ms (1043 tokens)\nGET /healthz 200 1ms\nPOST /generate/postmortem 200 8200ms (2341 tokens)\nGET /healthz 200 2ms",
+  "expected": {
+    "severity": "info",
+    "root_cause_keywords": ["normal operation", "healthy", "within SLO"],
+    "must_not_hallucinate": ["error", "failure", "timeout", "degraded"],
+    "runbook_must_include": []
+  },
+  "notes": "Nominal traffic — model must return severity=info and not invent problems that don't exist in the logs."
+}

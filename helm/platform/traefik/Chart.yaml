@@ -1,0 +1,9 @@
+apiVersion: v2
+name: traefik-config
+description: Traefik ingress Helm values wrapper for SRE Copilot.
+type: application
+version: 0.1.0
+dependencies:
+  - name: traefik
+    version: "32.x.x"
+    repository: https://traefik.github.io/charts

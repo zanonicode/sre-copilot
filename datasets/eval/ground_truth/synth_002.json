@@ -1,0 +1,12 @@
+{
+  "id": "synth_002",
+  "source": "synthetic/memory_leak",
+  "log_snippet": "GC pause 1.4s, heap=82%\nGC pause 1.8s, heap=89%\nGC pause 2.1s, heap=94%\nheap=96%, eviction failed\nOOMKiller invoked: killed process backend-worker-3 (pid 12847)\nService recovered after pod restart",
+  "expected": {
+    "severity": "critical",
+    "root_cause_keywords": ["memory leak", "GC pressure", "OOM", "heap exhaustion"],
+    "must_not_hallucinate": ["CPU spike", "network issue", "disk I/O bottleneck"],
+    "runbook_must_include": ["increase memory limits", "heap dump", "profiler", "review recent deploys"]
+  },
+  "notes": "Progressive heap growth culminating in OOMKill — GC pause duration is the leading indicator."
+}

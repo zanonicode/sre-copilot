@@ -1,0 +1,12 @@
+{
+  "id": "synth_001",
+  "source": "synthetic/cascade_retry_storm",
+  "log_snippet": "GET /upstream/api timed out after 5000ms\nretrying GET /upstream/api (attempt 2/3)\nretrying GET /upstream/api (attempt 3/3)\ncircuit breaker OPEN for upstream-api\n503 Service Unavailable returned to 47 queued requests\ndownstream latency p99: 8230ms",
+  "expected": {
+    "severity": "critical",
+    "root_cause_keywords": ["timeout", "circuit breaker", "retry storm", "upstream failure"],
+    "must_not_hallucinate": ["database down", "disk full", "network partition confirmed"],
+    "runbook_must_include": ["check upstream-api health", "review circuit breaker config", "shed load"]
+  },
+  "notes": "Classic retry amplification storm — three retries at 5s each means 15s per request, upstream degraded."
+}

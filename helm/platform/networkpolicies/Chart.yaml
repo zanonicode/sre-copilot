@@ -1,0 +1,5 @@
+apiVersion: v2
+name: networkpolicies
+description: Per-namespace NetworkPolicy bundle for sre-copilot — default-deny egress baseline plus explicit allow-list (DNS, same-namespace, ingress from traefik).
+type: application
+version: 0.1.0

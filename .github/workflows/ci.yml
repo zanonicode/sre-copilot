@@ -1,0 +1,125 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-python:
+    name: Python lint (ruff + mypy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install backend deps
+        run: pip install -r src/backend/requirements.txt ruff mypy
+      - name: ruff check
+        run: ruff check src/backend tests/backend
+      - name: mypy
+        run: mypy src/backend --ignore-missing-imports || true
+
+  test-backend:
+    name: Backend unit tests
+    runs-on: ubuntu-latest
+    needs: lint-python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install backend deps + test deps
+        run: pip install -r src/backend/requirements.txt pytest pytest-asyncio httpx
+      - name: Run unit tests
+        run: |
+          PYTHONPATH=src pytest tests/backend/unit/ -v --tb=short
+
+  lint-helm:
+    name: Helm lint + kubeconform
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: "3.16.3"
+      - name: Install kubeconform
+        run: |
+          curl -sSLo kubeconform.tar.gz https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz
+          tar xzf kubeconform.tar.gz
+          sudo mv kubeconform /usr/local/bin/
+      - name: Helm lint backend
+        run: helm lint helm/backend
+      - name: Helm lint frontend
+        run: helm lint helm/frontend
+      - name: Helm lint ollama-externalname
+        run: helm lint helm/platform/ollama-externalname
+      - name: kubeconform backend
+        run: |
+          helm template helm/backend | kubeconform -strict -kubernetes-version 1.31.0 \
+            -schema-location default \
+            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+            -ignore-missing-schemas -
+      - name: kubeconform frontend
+        run: helm template helm/frontend | kubeconform -strict -kubernetes-version 1.31.0 -ignore-missing-schemas -
+      - name: kubeconform ollama-externalname
+        run: helm template helm/platform/ollama-externalname | kubeconform -strict -kubernetes-version 1.31.0 -ignore-missing-schemas -
+      - name: Helm lint networkpolicies
+        run: helm lint helm/platform/networkpolicies
+      - name: kubeconform networkpolicies
+        run: helm template helm/platform/networkpolicies | kubeconform -strict -kubernetes-version 1.31.0 -ignore-missing-schemas -
+
+  lint-terraform:
+    name: Terraform fmt check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+      - name: terraform fmt check
+        run: terraform fmt -check -recursive terraform/local/
+
+  lint-yaml:
+    name: YAML lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install yamllint
+      - name: yamllint helmfile
+        run: yamllint -d relaxed helmfile.yaml
+      - name: yamllint ci
+        run: yamllint -d relaxed .github/workflows/ci.yml
+
+  test-integration:
+    name: Backend integration tests (mocked Ollama)
+    runs-on: ubuntu-latest
+    needs: lint-python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install backend deps + test deps
+        run: pip install -r src/backend/requirements.txt pytest pytest-asyncio httpx
+      - name: Run integration tests (AT-007, AT-008, AT-009)
+        run: |
+          PYTHONPATH=src pytest tests/integration/ -v --tb=short
+
+  validate-ground-truth:
+    name: Validate ground-truth JSON
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: jq validate all ground-truth files
+        run: |
+          for f in datasets/eval/ground_truth/*.json; do
+            echo "Validating $f"
+            jq . "$f" > /dev/null
+          done

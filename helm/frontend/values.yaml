@@ -1,0 +1,27 @@
+replicaCount: 1
+
+image:
+  repository: sre-copilot/frontend
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 3000
+
+ingressHost: "sre-copilot.localtest.me"
+
+env:
+  NEXT_PUBLIC_API_URL: "https://{{ .Values.ingressHost }}"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

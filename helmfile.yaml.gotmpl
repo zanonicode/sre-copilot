@@ -1,0 +1,71 @@
+repositories:
+  - name: traefik
+    url: https://traefik.github.io/charts
+  - name: sealed-secrets
+    url: https://bitnami-labs.github.io/sealed-secrets
+
+environments:
+  local:
+    values:
+      - namespace: sre-copilot
+
+---
+releases:
+  # --- platform (wave 0) ---
+  - name: traefik
+    namespace: platform
+    chart: traefik/traefik
+    version: "~32.0"
+    values:
+      - helm/platform/traefik/values.yaml
+
+  - name: sealed-secrets
+    namespace: platform
+    chart: sealed-secrets/sealed-secrets
+    version: "~2.17"
+    values:
+      - helm/platform/sealed-secrets/values.yaml
+    needs:
+      - platform/traefik
+
+  # --- networking (wave 1) ---
+  - name: networkpolicies
+    namespace: sre-copilot
+    chart: ./helm/platform/networkpolicies
+    needs:
+      - platform/traefik
+
+  # --- apps (wave 1) ---
+  - name: ollama-externalname
+    namespace: sre-copilot
+    chart: ./helm/platform/ollama-externalname
+    needs:
+      - sre-copilot/networkpolicies
+    set:
+      - name: hostBridgeCIDR
+        value: {{ env "HOST_BRIDGE_CIDR" | default "192.168.65.0/24" }}
+
+  # --- apps (wave 2) ---
+  - name: backend
+    namespace: sre-copilot
+    chart: ./helm/backend
+    values:
+      - helm/backend/values.yaml
+    set:
+      - name: llm.model
+        value: {{ env "LLM_MODEL" | default "qwen2.5:7b-instruct-q4_K_M" }}
+      - name: llm.judgeModel
+        value: {{ env "LLM_JUDGE_MODEL" | default "llama3.1:8b-instruct-q4_K_M" }}
+    needs:
+      - sre-copilot/ollama-externalname
+
+  - name: frontend
+    namespace: sre-copilot
+    chart: ./helm/frontend
+    values:
+      - helm/frontend/values.yaml
+    set:
+      - name: ingressHost
+        value: {{ env "INGRESS_HOST" | default "sre-copilot.localtest.me" }}
+    needs:
+      - sre-copilot/backend

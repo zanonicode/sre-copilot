@@ -1,0 +1,6 @@
+namespace: sre-copilot
+
+# NOTE: The Ollama host-bridge CIDR was moved to the ollama-externalname chart
+# (helm/platform/ollama-externalname/values.yaml, key: hostBridgeCIDR) so that
+# the NetworkPolicy and the ExternalName Service share a single source of truth.
+# Override at deploy time with: HOST_BRIDGE_CIDR=... make up

@@ -1,0 +1,8 @@
+externalName: host.docker.internal
+port: 11434
+# CIDR of the Docker host bridge — varies by runtime.
+# Docker Desktop: 192.168.65.0/24 | OrbStack: 198.19.249.0/24
+# Colima: 192.168.106.0/24 | Linux Docker: 172.17.0.0/16
+# Override at deploy time via env: HOST_BRIDGE_CIDR=...  make up
+# Detect with: make detect-bridge
+hostBridgeCIDR: "192.168.65.0/24"
