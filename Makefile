@@ -6,6 +6,8 @@ KUBECONFIG      := $(HOME)/.kube/sre-copilot.config
 BACKEND_IMAGE   := sre-copilot/backend:latest
 BACKEND_V2_IMAGE := sre-copilot/backend:v2
 FRONTEND_IMAGE  := sre-copilot/frontend:latest
+ARGOCD_VERSION  := v2.14.5
+ARGOCD_IMAGE    := quay.io/argoproj/argocd:$(ARGOCD_VERSION)
 HELMFILE        := helmfile --environment local
 KUBECTL         := kubectl --kubeconfig=$(KUBECONFIG)
 
@@ -39,9 +41,10 @@ seed-models: ## Pull Ollama models and pre-pull all container images (run once)
 	else \
 		echo "==> Skipping $(LLM_JUDGE_MODEL) (judge model) — unset SKIP_JUDGE to include"; \
 	fi
-	@echo "==> Pre-pulling platform images (kind, traefik)..."
+	@echo "==> Pre-pulling platform images (kind, traefik, argocd)..."
 	docker pull kindest/node:v1.31.0
 	docker pull traefik:v3.1
+	docker pull $(ARGOCD_IMAGE)
 	@echo "==> Building application images..."
 	docker build -t $(BACKEND_IMAGE) src/backend
 	docker build -t $(FRONTEND_IMAGE) src/frontend
@@ -50,15 +53,19 @@ seed-models: ## Pull Ollama models and pre-pull all container images (run once)
 up: ## Bootstrap kind + ArgoCD; ArgoCD then reconciles all releases (GitOps)
 	@echo "==> [1/5] Provisioning kind cluster via Terraform..."
 	cd terraform/local && terraform init -input=false && terraform apply -auto-approve
-	@echo "==> [2/5] Loading app images into kind..."
+	@echo "==> [2/5] Loading app + platform images into kind..."
 	kind load docker-image $(BACKEND_IMAGE)  --name $(CLUSTER_NAME)
 	kind load docker-image $(FRONTEND_IMAGE) --name $(CLUSTER_NAME)
+	@echo "    Loading ArgoCD image — kind nodes can't reliably hit quay.io"
+	@echo "    behind some corporate TLS chains; pre-loading sidesteps that."
+	@docker image inspect $(ARGOCD_IMAGE) > /dev/null 2>&1 || docker pull $(ARGOCD_IMAGE)
+	kind load docker-image $(ARGOCD_IMAGE) --name $(CLUSTER_NAME)
 	@echo "==> [3/5] Bootstrap traefik via helmfile (ingress needed before ArgoCD UI is reachable)..."
 	KUBECONFIG=$(KUBECONFIG) $(HELMFILE) sync --selector name=traefik
-	@echo "==> [4/5] Installing ArgoCD..."
+	@echo "==> [4/5] Installing ArgoCD $(ARGOCD_VERSION)..."
 	$(KUBECTL) create namespace argocd --dry-run=client -o yaml | $(KUBECTL) apply -f -
 	$(KUBECTL) create namespace observability --dry-run=client -o yaml | $(KUBECTL) apply -f -
-	$(KUBECTL) apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/v2.12.0/manifests/install.yaml
+	$(KUBECTL) apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/$(ARGOCD_VERSION)/manifests/install.yaml
 	@echo "    Waiting for argocd-server to be ready (up to 5 min)..."
 	$(KUBECTL) rollout status -n argocd deployment/argocd-server --timeout=300s
 	@echo "==> [5/5] Applying root Application (ArgoCD reconciles all releases via app-of-apps)..."
