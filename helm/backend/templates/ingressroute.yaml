@@ -1,0 +1,17 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: backend
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: backend
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`{{ .Values.apiHost | default "api.sre-copilot.localtest.me" }}`)
+      kind: Rule
+      services:
+        - name: backend
+          port: {{ .Values.service.port }}
+  tls: {}

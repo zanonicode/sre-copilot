@@ -1,0 +1,17 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: frontend
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: frontend
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`{{ .Values.ingressHost }}`)
+      kind: Rule
+      services:
+        - name: frontend
+          port: {{ .Values.service.port }}
+  tls: {}

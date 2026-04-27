@@ -63,8 +63,10 @@ datasources:
 
 grafana.ini:
   server:
-    root_url: "%(protocol)s://%(domain)s:%(http_port)s/grafana/"
-    serve_from_sub_path: true
+    # Subdomain pattern: grafana.sre-copilot.localtest.me serves at root path.
+    # Override domain via grafana.fullnameOverride or env if your INGRESS_HOST varies.
+    root_url: "https://grafana.sre-copilot.localtest.me/"
+    serve_from_sub_path: false
   auth.anonymous:
     enabled: true
     org_role: Viewer

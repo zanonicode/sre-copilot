@@ -15,6 +15,8 @@ service:
   type: ClusterIP
   port: 8000
 
+apiHost: "api.sre-copilot.localtest.me"
+
 resources:
   requests:
     cpu: 250m

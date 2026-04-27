@@ -11,8 +11,10 @@ service:
 
 ingressHost: "sre-copilot.localtest.me"
 
+apiHost: "api.sre-copilot.localtest.me"
+
 env:
-  NEXT_PUBLIC_API_URL: "https://{{ .Values.ingressHost }}"
+  NEXT_PUBLIC_API_URL: "https://{{ .Values.apiHost }}"
 
 resources:
   requests:
