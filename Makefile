@@ -59,7 +59,19 @@ up: ## Bootstrap kind + ArgoCD; ArgoCD then reconciles all releases (GitOps)
 	@echo "    Loading ArgoCD image — kind nodes can't reliably hit quay.io"
 	@echo "    behind some corporate TLS chains; pre-loading sidesteps that."
 	@docker image inspect $(ARGOCD_IMAGE) > /dev/null 2>&1 || docker pull $(ARGOCD_IMAGE)
-	kind load docker-image $(ARGOCD_IMAGE) --name $(CLUSTER_NAME)
+	@# Multi-arch manifest lists trip up `kind load --all-platforms` because
+	@# upstream argocd ships an attestation sub-manifest whose content blob
+	@# isn't pulled to the local store. Use `docker save --platform=<host>`
+	@# (Docker 27+) to strip the manifest list to a single-platform export.
+	@ARCH=$$(uname -m); case "$$ARCH" in \
+	  arm64|aarch64) PLAT=linux/arm64 ;; \
+	  x86_64|amd64)  PLAT=linux/amd64 ;; \
+	  *) echo "Unsupported arch: $$ARCH"; exit 1 ;; \
+	esac; \
+	TARFILE=$$(mktemp -t argocd.tar.XXXXXX); \
+	docker save --platform=$$PLAT $(ARGOCD_IMAGE) -o $$TARFILE && \
+	kind load image-archive $$TARFILE --name $(CLUSTER_NAME); \
+	rm -f $$TARFILE
 	@echo "==> [3/5] Bootstrap traefik via helmfile (ingress needed before ArgoCD UI is reachable)..."
 	KUBECONFIG=$(KUBECONFIG) $(HELMFILE) sync --selector name=traefik
 	@echo "==> [4/5] Installing ArgoCD $(ARGOCD_VERSION)..."
