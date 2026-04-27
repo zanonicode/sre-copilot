@@ -13,11 +13,14 @@ import logging
 import os
 import sys
 
-from opentelemetry import metrics, trace
+from opentelemetry import _logs, metrics, trace
+from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import Resource
@@ -44,6 +47,9 @@ def init_observability_providers() -> None:
         "service.name": "sre-copilot-backend",
         "service.version": os.environ.get("APP_VERSION", "dev"),
         "deployment.environment": "kind-local",
+        # Hint to the Loki exporter in the collector: promote these resource
+        # attributes to Loki stream labels so dashboards can filter by them.
+        "loki.resource.labels": "service.name,deployment.environment",
     })
 
     tp = TracerProvider(resource=resource)
@@ -63,9 +69,31 @@ def init_observability_providers() -> None:
     )
     metrics.set_meter_provider(mp)
 
+    lp = LoggerProvider(resource=resource)
+    lp.add_log_record_processor(
+        BatchLogRecordProcessor(OTLPLogExporter(endpoint=endpoint, insecure=True))
+    )
+    _logs.set_logger_provider(lp)
+
+    otel_handler = LoggingHandler(level=logging.INFO, logger_provider=lp)
+    logging.getLogger().addHandler(otel_handler)
+
     # Surface OTel SDK errors to stderr so we see export failures
     # (BatchSpanProcessor swallows them by default).
     logging.getLogger("opentelemetry").addHandler(logging.StreamHandler(sys.stderr))
+
+    # Filter benign async-generator warnings: contextvar tokens attached
+    # in one asyncio task can fail to detach when the SSE generator's
+    # finally runs in a different task (client disconnect, aclose, GC).
+    # These don't affect span correctness — they just spam logs.
+    class _AsyncCtxNoise(logging.Filter):
+        _patterns = ("Failed to detach context", "Calling end() on an ended span")
+        def filter(self, record: logging.LogRecord) -> bool:
+            msg = record.getMessage()
+            return not any(p in msg for p in self._patterns)
+
+    logging.getLogger("opentelemetry.context").addFilter(_AsyncCtxNoise())
+    logging.getLogger("opentelemetry.sdk.trace").addFilter(_AsyncCtxNoise())
 
     _INITIALIZED = True
 

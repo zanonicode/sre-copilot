@@ -41,7 +41,7 @@
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
       "targets": [
         {
-          "expr": "sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\",http_status_code=~\"5..\"}[5m])) / sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\"}[5m]))",
+          "expr": "(sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\",http_status_code=~\"5..\"}[5m])) or vector(0)) / clamp_min(sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\"}[5m])), 1)",
           "legendFormat": "5xx rate",
           "refId": "A"
         }
@@ -65,7 +65,7 @@
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
       "targets": [
         {
-          "expr": "kube_deployment_status_replicas_available{deployment=\"backend\"}",
+          "expr": "sum(kube_pod_status_ready{namespace=\"sre-copilot\",condition=\"true\"} and on(pod,namespace) kube_pod_info{namespace=\"sre-copilot\",pod=~\"backend-.*\"}) or vector(0)",
           "legendFormat": "ready",
           "refId": "A"
         }
@@ -91,7 +91,7 @@
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
       "targets": [
         {
-          "expr": "1 - sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\",http_status_code=~\"5..\"}[7d])) / sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\"}[7d]))",
+          "expr": "1 - ((sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\",http_status_code=~\"5..\"}[7d])) or vector(0)) / clamp_min(sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\"}[7d])), 1))",
           "legendFormat": "availability",
           "refId": "A"
         }

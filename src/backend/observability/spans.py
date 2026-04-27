@@ -1,4 +1,5 @@
 import os
+import time
 
 from opentelemetry import trace
 from opentelemetry.trace import SpanKind
@@ -10,19 +11,19 @@ _tracer = trace.get_tracer(__name__)
 
 def synthetic_ollama_span(
     parent,
-    t0: float,
     duration: float,
     input_tokens: int,
     output_tokens: int,
 ) -> None:
     """Create a child INTERNAL span representing host-side Ollama work.
 
-    Reconstructed from chunk arrival timestamps because OTel cannot auto-instrument
-    across the kind-cluster → host-process boundary (no Metal GPU passthrough in Docker).
-    The `synthetic=True` attribute signals this to Tempo viewers.
+    Reconstructed because OTel cannot auto-instrument across the kind-cluster
+    → host-process boundary (no Metal GPU passthrough in Docker). Uses
+    time.time_ns() for wall-clock boundaries — asyncio's event-loop clock is
+    monotonic (boot-relative), which would land the span in 1970+uptime.
     """
-    end_time_ns = int((t0 + duration) * 1e9)
-    start_time_ns = int(t0 * 1e9)
+    end_time_ns = time.time_ns()
+    start_time_ns = end_time_ns - int(duration * 1e9)
     with _tracer.start_as_current_span(
         "ollama.inference",
         kind=SpanKind.INTERNAL,

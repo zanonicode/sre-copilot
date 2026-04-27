@@ -9,8 +9,13 @@ metadata:
     app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
   scaleTargetRef:
+    {{- if .Values.useArgoRollouts }}
+    apiVersion: argoproj.io/v1alpha1
+    kind: Rollout
+    {{- else }}
     apiVersion: apps/v1
     kind: Deployment
+    {{- end }}
     name: backend
   minReplicas: {{ .Values.autoscaling.minReplicas }}
   maxReplicas: {{ .Values.autoscaling.maxReplicas }}

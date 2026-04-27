@@ -119,9 +119,25 @@ demo-canary: ## Build backend:v2, load into kind, bump Rollout image, watch prog
 	@echo "==> [demo-canary] Patching Rollout image to v2..."
 	$(KUBECTL) patch rollout backend -n sre-copilot --type=merge \
 	     -p '{"spec":{"template":{"spec":{"containers":[{"name":"backend","image":"$(BACKEND_V2_IMAGE)"}]}}}}'
+	@echo "==> [demo-canary] Starting background load gen (90s) so AnalysisTemplate"
+	@echo "    has http_server_duration + llm_ttft samples to evaluate..."
+	@$(KUBECTL) port-forward -n sre-copilot svc/backend 8000:8000 > /tmp/sre-canary-pf.log 2>&1 & \
+	PF=$$!; \
+	( sleep 3; \
+	  END=$$(($$(date +%s)+90)); \
+	  while [ $$(date +%s) -lt $$END ]; do \
+	    curl -s -o /dev/null http://localhost:8000/openapi.json & \
+	    curl -s -o /dev/null -X POST http://localhost:8000/logs \
+	         -H "content-type: application/json" \
+	         -d '{"log_payload":"ERROR connection reset"}' & \
+	    sleep 2; \
+	  done; \
+	  kill $$PF 2>/dev/null \
+	) > /tmp/sre-canary-load.log 2>&1 &
 	@echo "==> [demo-canary] Watching Rollout progression (Ctrl+C to stop watching)..."
-	@echo "    Expected: 25%% → analysis pause → 50%% → 100%%"
-	@echo "    For richer visualization, install the plugin: brew install argoproj/tap/kubectl-argo-rollouts"
+	@echo "    Expected: 25%% → analysis pause (60s) → 50%% → 100%%"
+	@echo "    Background load logs: /tmp/sre-canary-load.log"
+	@echo "    For richer visualization: brew install argoproj/tap/kubectl-argo-rollouts"
 	$(KUBECTL) get rollout backend -n sre-copilot -w || true
 
 demo-reset: ## Reset canary — revert backend Rollout to :latest and promote to stable

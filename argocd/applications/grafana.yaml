@@ -21,6 +21,17 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: observability
+  ignoreDifferences:
+    # Workaround for ArgoCD v2.12-2.14 K8s 1.35 schema bug: status.terminatingReplicas
+    # is not in ArgoCD's embedded schema, breaking structured-merge-diff.
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /status/terminatingReplicas
+    - group: apps
+      kind: StatefulSet
+      jsonPointers:
+        - /status/terminatingReplicas
   syncPolicy:
     automated:
       prune: true

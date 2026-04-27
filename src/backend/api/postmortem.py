@@ -41,56 +41,58 @@ def _estimate_tokens(req: PostmortemRequest) -> int:
 async def generate_postmortem(req: PostmortemRequest, request: Request):
     prompt = render_postmortem(req.log_analysis, req.timeline, req.context)
     input_tokens = _estimate_tokens(req)
-    LLM_INPUT_TOKENS.add(input_tokens)
-    LLM_ACTIVE.add(1)
 
     async def stream() -> AsyncIterator[bytes]:
-        with tracer.start_as_current_span(
-            "postmortem.generate",
-            attributes={
-                "llm.model": LLM_MODEL,
-                "llm.input_tokens": input_tokens,
-                "peer.service": "ollama-host",
-            },
-        ) as span:
-            try:
-                stream_resp = await client.chat.completions.create(
-                    model=LLM_MODEL,
-                    messages=[{"role": "user", "content": prompt}],
-                    stream=True,
-                    response_format={"type": "json_object"},
-                )
-            except APIConnectionError as e:
-                span.record_exception(e)
-                span.set_status(trace.StatusCode.ERROR, "ollama unreachable")
-                yield await _sse({"type": "error", "code": "ollama_unreachable",
-                                  "message": "LLM backend is unavailable"})
-                return
+        LLM_INPUT_TOKENS.add(input_tokens)
+        LLM_ACTIVE.add(1)
+        try:
+            with tracer.start_as_current_span(
+                "postmortem.generate",
+                attributes={
+                    "llm.model": LLM_MODEL,
+                    "llm.input_tokens": input_tokens,
+                    "peer.service": "ollama-host",
+                },
+            ) as span:
+                try:
+                    stream_resp = await client.chat.completions.create(
+                        model=LLM_MODEL,
+                        messages=[{"role": "user", "content": prompt}],
+                        stream=True,
+                        response_format={"type": "json_object"},
+                    )
+                except APIConnectionError as e:
+                    span.record_exception(e)
+                    span.set_status(trace.StatusCode.ERROR, "ollama unreachable")
+                    yield await _sse({"type": "error", "code": "ollama_unreachable",
+                                      "message": "LLM backend is unavailable"})
+                    return
 
-            t0 = asyncio.get_event_loop().time()
-            first_token_seen = False
-            output_tokens = 0
-            try:
-                async for chunk in stream_resp:
-                    if await request.is_disconnected():
-                        await stream_resp.aclose()
-                        span.set_status(trace.StatusCode.ERROR, "cancelled")
-                        return
-                    delta = chunk.choices[0].delta.content or ""
-                    if not delta:
-                        continue
-                    if not first_token_seen:
-                        ttft = asyncio.get_event_loop().time() - t0
-                        LLM_TTFT.record(ttft)
-                        span.add_event("first_token", {"ttft_seconds": ttft})
-                        first_token_seen = True
-                    output_tokens += 1
-                    yield await _sse({"type": "delta", "token": delta})
-            finally:
-                duration = asyncio.get_event_loop().time() - t0
-                LLM_OUTPUT_TOKENS.add(output_tokens)
-                LLM_RESPONSE.record(duration)
-                LLM_ACTIVE.add(-1)
-                yield await _sse({"type": "done", "output_tokens": output_tokens})
+                t0 = asyncio.get_event_loop().time()
+                first_token_seen = False
+                output_tokens = 0
+                try:
+                    async for chunk in stream_resp:
+                        if await request.is_disconnected():
+                            await stream_resp.aclose()
+                            span.set_status(trace.StatusCode.ERROR, "cancelled")
+                            return
+                        delta = chunk.choices[0].delta.content or ""
+                        if not delta:
+                            continue
+                        if not first_token_seen:
+                            ttft = asyncio.get_event_loop().time() - t0
+                            LLM_TTFT.record(ttft)
+                            span.add_event("first_token", {"ttft_seconds": ttft})
+                            first_token_seen = True
+                        output_tokens += 1
+                        yield await _sse({"type": "delta", "token": delta})
+                finally:
+                    duration = asyncio.get_event_loop().time() - t0
+                    LLM_OUTPUT_TOKENS.add(output_tokens)
+                    LLM_RESPONSE.record(duration)
+                    yield await _sse({"type": "done", "output_tokens": output_tokens})
+        finally:
+            LLM_ACTIVE.add(-1)
 
     return StreamingResponse(stream(), media_type="text/event-stream")

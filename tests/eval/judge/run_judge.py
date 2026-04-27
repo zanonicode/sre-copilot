@@ -116,6 +116,10 @@ def main() -> int:
         print("SKIP_JUDGE=1 — skipping Layer-2 judge evaluation.")
         return 0
 
+    # Ensure output dir exists early so the CI commit step never trips over a
+    # missing path even on hard-fail runs.
+    JUDGE_RUNS_DIR.mkdir(parents=True, exist_ok=True)
+
     gt_paths = sorted(GROUND_TRUTH_DIR.glob("*.json"))
     if not gt_paths:
         print(f"ERROR: no ground-truth files in {GROUND_TRUTH_DIR}", file=sys.stderr)
@@ -132,10 +136,10 @@ def main() -> int:
     for gt_path in gt_paths:
         gt = json.loads(gt_path.read_text())
         incident_id = gt_path.stem
-        log_payload = gt.get("log_payload", "")
+        log_payload = gt.get("log_payload") or gt.get("log_snippet", "")
 
         if not log_payload:
-            print(f"  SKIP {incident_id} — no log_payload in ground truth")
+            print(f"  SKIP {incident_id} — no log_payload/log_snippet in ground truth")
             skipped += 1
             continue
 
