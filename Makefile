@@ -17,7 +17,7 @@ LLM_JUDGE_MODEL ?= llama3.1:8b-instruct-q4_K_M
 INGRESS_HOST    ?= sre-copilot.localtest.me
 export LLM_MODEL LLM_JUDGE_MODEL INGRESS_HOST
 
-.PHONY: help up down seed-models demo demo-canary demo-reset smoke lint test seal detect-bridge judge restart-backend clean-replicasets trust-certs dashboards dashboards-reset
+.PHONY: help up down seed-models demo demo-canary demo-reset smoke lint test seal detect-bridge judge restart-backend clean-replicasets trust-certs dashboards
 
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -219,27 +219,25 @@ trust-certs: ## Install mkcert local CA + mint wildcard cert for *.localtest.me,
 	@echo "==> [trust-certs] Done. Restart your browser to pick up the new CA."
 	@echo "    Verify:  curl -v https://api.sre-copilot.localtest.me/healthz  (no -k needed!)"
 
-dashboards: ## Regenerate Grafana ConfigMaps from observability/dashboards/*.json and apply to cluster
+dashboards: ## Regenerate Grafana ConfigMaps from observability/dashboards/*.json and apply to cluster (force-reload via delete-then-recreate)
 	@echo "==> [dashboards] Regenerating ConfigMaps from JSON source of truth..."
 	python3 observability/dashboards/regen-configmaps.py
-	@echo "==> [dashboards] Applying to cluster (Grafana sidecar reloads within ~30s)..."
-	@# server-side apply to silence the 'missing last-applied-configuration'
-	@# warnings and to keep the ConfigMaps owned by an immutable field manager
-	@# regardless of who originally created them.
+	@# Delete-then-recreate is the only reliable update path: Grafana's
+	@# dashboard provisioner caches the in-DB version once a UID has been
+	@# registered, so a kubectl apply on a changed ConfigMap may not actually
+	@# update the rendered panels (the sidecar updates the file but Grafana's
+	@# content-compare sometimes decides 'no change'). Delete drops the
+	@# dashboard from Grafana's DB; re-apply causes a clean re-import.
+	@echo "==> [dashboards] Dropping existing ConfigMaps so Grafana removes them from DB..."
+	$(KUBECTL) delete configmap -n observability -l grafana_dashboard=1 --ignore-not-found 2>&1 | tail -5
+	@echo "==> [dashboards] Waiting for sidecar to delete the dashboard files..."
+	@sleep 6
+	@echo "==> [dashboards] Re-applying fresh ConfigMaps..."
 	$(KUBECTL) apply --server-side --force-conflicts \
 	     --field-manager=sre-copilot-dashboards \
 	     -f observability/dashboards/configmaps.yaml
-	@echo "==> [dashboards] Done. Hard-refresh Grafana (Cmd-Shift-R) to see updates."
+	@echo "==> [dashboards] Done. Grafana will re-import within ~10s. Hard-refresh (Cmd-Shift-R) to see."
 	@echo "    URL: https://grafana.$(INGRESS_HOST)"
-
-dashboards-reset: ## Force-reload all dashboards (delete ConfigMaps, regen, re-apply). Use when 'make dashboards' doesn't seem to take effect.
-	@echo "==> [dashboards-reset] Deleting existing dashboard ConfigMaps so Grafana drops them from DB..."
-	$(KUBECTL) delete configmap -n observability -l grafana_dashboard=1 --ignore-not-found 2>&1 | tail -10
-	@echo "==> [dashboards-reset] Waiting for Grafana sidecar to remove the files..."
-	@sleep 8
-	@echo "==> [dashboards-reset] Re-applying fresh ConfigMaps..."
-	$(MAKE) dashboards
-	@echo "==> [dashboards-reset] Done. Grafana will re-import each dashboard on next poll (~10s)."
 
 smoke: ## Run end-to-end smoke tests (healthz + SSE + ingress + Ollama + memory + NP egress)
 	@$(KUBECTL) port-forward -n sre-copilot svc/backend 8000:8000 > /tmp/sre-smoke-pf.log 2>&1 & \
