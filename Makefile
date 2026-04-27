@@ -93,29 +93,35 @@ down: ## Destroy kind cluster and clean Terraform state
 	kind delete cluster --name $(CLUSTER_NAME) || true
 	@echo "==> Cluster destroyed"
 
-demo: ## Run the ~5-minute demo script (anomaly + traces + postmortem + resilience). Run make demo-canary separately for the canary beat.
-	@echo "==> [Beat 0:00] Opening browser tabs..."
-	@open https://$(INGRESS_HOST) 2>/dev/null || xdg-open https://$(INGRESS_HOST) 2>/dev/null || true
-	@echo "    Open Grafana manually if port-forward is not running:"
-	@echo "    kubectl port-forward -n observability svc/grafana 3001:80"
-	@echo "    kubectl argo rollouts dashboard  (Rollouts dashboard on :3100)"
+demo: ## Paced demo for Loom recording (waits for ENTER between beats so the presenter controls timing).
+	@echo "==> Demo starts. Press ENTER between beats to pace with your narration."
+	@echo "    Run 'make demo-canary' separately for the canary walkthrough."
 	@echo ""
-	@echo "==> [Beat 0:30] Triggering cascade_retry_storm anomaly..."
+	@echo "[Beat 1] Opening UI..."
+	@open https://$(INGRESS_HOST) 2>/dev/null || xdg-open https://$(INGRESS_HOST) 2>/dev/null || true
+	@echo "    Also open: Grafana (kubectl port-forward -n observability svc/grafana 3001:80)"
+	@echo "    Also open: Rollouts dashboard (kubectl argo rollouts dashboard → :3100)"
+	@read -r -p "    Press ENTER to inject anomaly..." _
+	@echo ""
+	@echo "[Beat 2] Injecting cascade_retry_storm anomaly..."
 	@$(KUBECTL) exec -n sre-copilot $$($(KUBECTL) get pod -n sre-copilot -l app.kubernetes.io/name=backend -o name | head -1) -- \
 	     curl -sf -X POST "http://localhost:8000/admin/inject?scenario=cascade_retry_storm" \
 	     -H "X-Inject-Token: $${ANOMALY_INJECTOR_TOKEN}" 2>/dev/null | jq . || \
 	     curl -sf -X POST "http://localhost:8000/admin/inject?scenario=cascade_retry_storm" \
 	     -H "X-Inject-Token: $${ANOMALY_INJECTOR_TOKEN}" | jq .
+	@echo "    Click 'Try this live anomaly' in the UI; watch SSE tokens stream."
+	@read -r -p "    Press ENTER when ready for the trace beat..." _
 	@echo ""
-	@echo "==> [Beat 0:30] Anomaly injected — click 'Try this live anomaly' in the UI."
-	@echo "    Watch SSE tokens stream into the UI in real time."
+	@echo "[Beat 3] Tracing"
+	@echo "    Grafana → Explore → Tempo, search service=sre-copilot-backend"
+	@echo "    Span tree to point out: http.server → ollama.host_call → ollama.inference (synthetic)"
+	@read -r -p "    Press ENTER when ready for the postmortem beat..." _
 	@echo ""
-	@echo "==> [Beat 2:00] Trace tab — open Grafana → Explore → Tempo, search service=sre-copilot-backend"
-	@echo "    Observe: http.server → ollama.host_call → ollama.inference (synthetic span)"
+	@echo "[Beat 4] Postmortem"
+	@echo "    In the UI, click 'Generate postmortem from this incident'."
+	@read -r -p "    Press ENTER when ready for the resilience beat..." _
 	@echo ""
-	@echo "==> [Beat 3:30] Postmortem bridge — click 'Generate postmortem from this incident' in UI"
-	@echo ""
-	@echo "==> [Beat 4:30] Resilience beat — deleting one backend pod..."
+	@echo "[Beat 5] Resilience — deleting one backend pod..."
 	@$(KUBECTL) delete pod -n sre-copilot -l app.kubernetes.io/name=backend --field-selector=status.phase=Running \
 	     --wait=false 2>/dev/null | head -1 || true
 	@echo "    Watch: kubectl get pods -n sre-copilot -l app.kubernetes.io/name=backend -w"
