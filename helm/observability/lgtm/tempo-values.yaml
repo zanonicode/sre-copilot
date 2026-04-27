@@ -43,24 +43,31 @@ tempo:
     frontend_worker:
       frontend_address: localhost:9095
 
-  # Enable metrics_generator with local-blocks processor — required so
+  # Enable metricsGenerator with local-blocks processor — required so
   # Grafana's Tempo plugin can run TraceQL search on filesystem storage.
   # Without this, queries fail with "backend TraceQL search queries are
   # not supported" even though /api/search via curl works fine.
-  metrics_generator:
+  # NOTE: chart key is camelCase (metricsGenerator); rendered config is
+  # snake_case (metrics_generator). They look like different things; they
+  # aren't.
+  metricsGenerator:
     enabled: true
-    processor:
-      local_blocks:
-        filter_server_spans: false
-        flush_to_storage: true
+    # The chart's metricsGenerator block historically focused on remote_write
+    # for span-metrics. We don't need that — we just need the local-blocks
+    # processor enabled per-tenant via the overrides default. Setting
+    # remoteWriteUrl to "" keeps the chart from trying to push to a
+    # non-existent Prometheus remote-write endpoint.
+    remoteWriteUrl: ""
 
-# Apply the local-blocks processor as a default for all tenants (we run
-# multitenancy_enabled: false, so this is the implicit single-tenant config).
-overrides:
-  defaults:
-    metrics_generator:
-      processors:
-        - local-blocks
+  # Apply local-blocks as the default tenant config. With
+  # multitenancy_enabled: false, this single-tenant config is what every
+  # ingested trace gets. The processor builds an in-process searchable
+  # index over recent blocks so backend TraceQL queries succeed.
+  overrides:
+    defaults:
+      metrics_generator:
+        processors:
+          - local-blocks
 
 persistence:
   enabled: false
