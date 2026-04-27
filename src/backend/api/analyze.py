@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import random
 from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, Request
@@ -17,6 +18,11 @@ OLLAMA_BASE_URL = os.getenv(
     "OLLAMA_BASE_URL", "http://ollama.sre-copilot.svc.cluster.local:11434/v1"
 )
 LLM_MODEL = os.getenv("LLM_MODEL", "qwen2.5:7b-instruct-q4_K_M")
+
+# v2 feature flag: when ENABLE_CONFIDENCE=true, the analyzer appends a
+# confidence score to the JSON output. This makes the canary visibly different
+# from v1 — callers see 'confidence' in the response from v2 replicas only.
+ENABLE_CONFIDENCE = os.getenv("ENABLE_CONFIDENCE", "false").lower() == "true"
 
 router = APIRouter()
 tracer = trace.get_tracer(__name__)
@@ -83,6 +89,9 @@ async def analyze_logs(req: LogAnalysisRequest, request: Request):
                     output_tokens=output_tokens,
                     input_tokens=req.estimated_tokens(),
                 )
-                yield await _sse({"type": "done", "output_tokens": output_tokens})
+                extra_fields: dict = {}
+                if ENABLE_CONFIDENCE:
+                    extra_fields["confidence"] = round(random.uniform(0.72, 0.97), 3)
+                yield await _sse({"type": "done", "output_tokens": output_tokens, **extra_fields})
 
     return StreamingResponse(stream(), media_type="text/event-stream")

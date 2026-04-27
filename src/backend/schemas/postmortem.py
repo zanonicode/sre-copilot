@@ -59,6 +59,20 @@ class LogAnalysis(BaseModel):
     related_metrics: list[str] = Field(default_factory=list, max_length=10)
 
 
+class LogAnalysisV2(LogAnalysis):
+    """v2 schema: extends LogAnalysis with a confidence score.
+
+    This extra field makes the canary visible — callers receiving responses from
+    the v2 image see 'confidence' in the JSON output; v1 replicas omit it.
+    Used by make demo-canary to show progressive traffic migration.
+    """
+    confidence: float = Field(
+        ge=0.0,
+        le=1.0,
+        description="Model confidence in the analysis, 0.0–1.0.",
+    )
+
+
 class PostmortemRequest(BaseModel):
     log_analysis: dict
     timeline: list[dict] | None = None

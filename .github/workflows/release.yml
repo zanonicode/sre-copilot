@@ -1,0 +1,132 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v1.0.0)"
+        required: true
+
+env:
+  REGISTRY: ghcr.io
+  BACKEND_IMAGE: ghcr.io/${{ github.repository_owner }}/sre-copilot-backend
+  FRONTEND_IMAGE: ghcr.io/${{ github.repository_owner }}/sre-copilot-frontend
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  build-and-scan:
+    name: Build, Scan & Push
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: src/backend/Dockerfile
+          platforms: linux/arm64
+          push: true
+          provenance: false
+          sbom: false
+          tags: |
+            ${{ env.BACKEND_IMAGE }}:${{ steps.tag.outputs.tag }}
+            ${{ env.BACKEND_IMAGE }}:latest
+          build-args: |
+            APP_VERSION=${{ steps.tag.outputs.tag }}
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: src/frontend
+          file: src/frontend/Dockerfile
+          platforms: linux/arm64
+          push: true
+          provenance: false
+          sbom: false
+          tags: |
+            ${{ env.FRONTEND_IMAGE }}:${{ steps.tag.outputs.tag }}
+            ${{ env.FRONTEND_IMAGE }}:latest
+
+      - name: Trivy scan — backend
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "${{ env.BACKEND_IMAGE }}:${{ steps.tag.outputs.tag }}"
+          format: "table"
+          exit-code: "0"
+          ignore-unfixed: true
+          severity: "CRITICAL,HIGH"
+
+      - name: Trivy scan — frontend
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "${{ env.FRONTEND_IMAGE }}:${{ steps.tag.outputs.tag }}"
+          format: "table"
+          exit-code: "0"
+          ignore-unfixed: true
+          severity: "CRITICAL,HIGH"
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            LOG=$(git log --oneline "${PREV_TAG}..HEAD" --no-merges | head -50)
+          else
+            LOG=$(git log --oneline -20 --no-merges)
+          fi
+          echo "changelog<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$LOG" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          release_name: "SRE Copilot ${{ steps.tag.outputs.tag }}"
+          body: |
+            ## SRE Copilot ${{ steps.tag.outputs.tag }}
+
+            ### Images
+            - Backend: `${{ env.BACKEND_IMAGE }}:${{ steps.tag.outputs.tag }}`
+            - Frontend: `${{ env.FRONTEND_IMAGE }}:${{ steps.tag.outputs.tag }}`
+
+            ### Changelog
+            ${{ steps.changelog.outputs.changelog }}
+
+            ### Trivy Scan
+            One-shot `trivy image` scan run against both images — results in CI artifacts.
+          draft: false
+          prerelease: false

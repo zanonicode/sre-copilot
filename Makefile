@@ -4,6 +4,7 @@ SHELL := /bin/bash
 CLUSTER_NAME    := sre-copilot
 KUBECONFIG      := $(HOME)/.kube/sre-copilot.config
 BACKEND_IMAGE   := sre-copilot/backend:latest
+BACKEND_V2_IMAGE := sre-copilot/backend:v2
 FRONTEND_IMAGE  := sre-copilot/frontend:latest
 HELMFILE        := helmfile --environment local
 KUBECTL         := kubectl --kubeconfig=$(KUBECONFIG)
@@ -14,7 +15,7 @@ LLM_JUDGE_MODEL ?= llama3.1:8b-instruct-q4_K_M
 INGRESS_HOST    ?= sre-copilot.localtest.me
 export LLM_MODEL LLM_JUDGE_MODEL INGRESS_HOST
 
-.PHONY: help up down seed-models demo smoke lint test seal detect-bridge
+.PHONY: help up down seed-models demo demo-canary demo-reset smoke lint test seal detect-bridge judge
 
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -61,14 +62,60 @@ down: ## Destroy kind cluster and clean Terraform state
 	kind delete cluster --name $(CLUSTER_NAME) || true
 	@echo "==> Cluster destroyed"
 
-demo: ## Run the full 7-minute demo script (requires make up first)
-	@echo "==> Opening browser tabs..."
-	open https://$(INGRESS_HOST)
-	open http://localhost:3001  # Grafana
-	@echo "==> Triggering cascade_retry_storm anomaly..."
-	curl -sf -X POST "http://localhost:8000/admin/inject?scenario=cascade_retry_storm" \
+demo: ## Run the full 7-minute demo script (requires make up first) — see docs/loom-script.md
+	@echo "==> [Beat 0:00] Opening browser tabs..."
+	@open https://$(INGRESS_HOST) 2>/dev/null || xdg-open https://$(INGRESS_HOST) 2>/dev/null || true
+	@echo "    Open Grafana manually if port-forward is not running:"
+	@echo "    kubectl port-forward -n observability svc/grafana 3001:80"
+	@echo "    kubectl argo rollouts dashboard  (Rollouts dashboard on :3100)"
+	@echo ""
+	@echo "==> [Beat 0:30] Triggering cascade_retry_storm anomaly..."
+	@$(KUBECTL) exec -n sre-copilot deploy/backend -- \
+	     curl -sf -X POST "http://localhost:8000/admin/inject?scenario=cascade_retry_storm" \
+	     -H "X-Inject-Token: $${ANOMALY_INJECTOR_TOKEN}" 2>/dev/null | jq . || \
+	     curl -sf -X POST "http://localhost:8000/admin/inject?scenario=cascade_retry_storm" \
 	     -H "X-Inject-Token: $${ANOMALY_INJECTOR_TOKEN}" | jq .
-	@echo "==> Anomaly injected. Follow the demo script in docs/loom-script.md"
+	@echo ""
+	@echo "==> [Beat 0:30] Anomaly injected — click 'Try this live anomaly' in the UI."
+	@echo "    Watch SSE tokens stream into the UI in real time."
+	@echo ""
+	@echo "==> [Beat 2:00] Trace tab — open Grafana → Explore → Tempo, search service=sre-copilot-backend"
+	@echo "    Observe: http.server → ollama.host_call → ollama.inference (synthetic span)"
+	@echo ""
+	@echo "==> [Beat 3:30] Postmortem bridge — click 'Generate postmortem from this incident' in UI"
+	@echo ""
+	@echo "==> [Beat 4:30] Canary moment — triggering make demo-canary..."
+	$(MAKE) demo-canary
+	@echo ""
+	@echo "==> [Beat 6:30] Resilience beat — deleting one backend pod..."
+	@$(KUBECTL) delete pod -n sre-copilot -l app.kubernetes.io/name=backend --field-selector=status.phase=Running \
+	     --wait=false 2>/dev/null | head -1 || true
+	@echo "    Watch: kubectl get pods -n sre-copilot -l app.kubernetes.io/name=backend -w"
+	@echo "    PDB keeps service available (minAvailable=1). Replacement Ready in <30s."
+	@echo ""
+	@echo "==> Demo complete. See docs/loom-script.md for the full narrative."
+
+demo-canary: ## Build backend:v2, load into kind, bump Rollout image, watch progression
+	@echo "==> [demo-canary] Building backend:v2 image (adds confidence: float field)..."
+	docker build \
+	     --build-arg ENABLE_CONFIDENCE=true \
+	     -t $(BACKEND_V2_IMAGE) \
+	     -f src/backend/Dockerfile \
+	     --label "canary=v2" \
+	     .
+	@echo "==> [demo-canary] Loading backend:v2 into kind cluster..."
+	kind load docker-image $(BACKEND_V2_IMAGE) --name $(CLUSTER_NAME)
+	@echo "==> [demo-canary] Patching Rollout image to v2..."
+	$(KUBECTL) argo rollouts set image backend backend=$(BACKEND_V2_IMAGE) -n sre-copilot
+	@echo "==> [demo-canary] Watching Rollout progression (Ctrl+C to stop watching)..."
+	@echo "    Expected: 25%% → analysis pause → 50%% → 100%%"
+	$(KUBECTL) argo rollouts get rollout backend -n sre-copilot --watch || true
+
+demo-reset: ## Reset canary — revert backend Rollout to :latest and promote to stable
+	@echo "==> [demo-reset] Reverting backend Rollout to stable image ($(BACKEND_IMAGE))..."
+	$(KUBECTL) argo rollouts set image backend backend=$(BACKEND_IMAGE) -n sre-copilot
+	$(KUBECTL) argo rollouts promote backend -n sre-copilot --full
+	@echo "==> [demo-reset] Rollout reverted to $(BACKEND_IMAGE)"
 
 smoke: ## Run end-to-end smoke tests (healthz + SSE probe + wall-clock + memory snapshot)
 	@echo "==> Smoke: backend healthz (wall-clock start)..."
@@ -108,7 +155,7 @@ smoke: ## Run end-to-end smoke tests (healthz + SSE probe + wall-clock + memory 
 
 lint: ## Run all static analysis (ruff, mypy, eslint, helm lint, terraform fmt, yamllint)
 	@echo "==> Python lint..."
-	ruff check src/backend tests/backend
+	ruff check src/backend tests/
 	mypy src/backend --ignore-missing-imports || true
 	@echo "==> Helm lint..."
 	helm lint helm/backend
@@ -119,13 +166,18 @@ lint: ## Run all static analysis (ruff, mypy, eslint, helm lint, terraform fmt, 
 	@echo "==> Terraform fmt check..."
 	terraform fmt -check terraform/local/ || true
 	@echo "==> YAML lint..."
-	yamllint -d relaxed helmfile.yaml .github/workflows/ci.yml || true
+	yamllint -d relaxed helmfile.yaml .github/workflows/ci.yml .github/workflows/nightly-eval.yml || true
 	@echo "==> lint complete"
 
-test: ## Run unit tests + integration tests + structural eval
+test: ## Run unit + integration tests + Layer-1 structural eval (AT-008, AT-010)
 	pytest tests/backend/unit/ -v --tb=short
 	pytest tests/integration/ -v --tb=short
+	pytest tests/eval/structural/ -v --tb=short
 	@echo "==> test complete"
+
+judge: ## Run Layer-2 Llama judge eval (AT-011) — requires live cluster + Ollama
+	@echo "==> Running Layer-2 Llama judge (requires backend on localhost:8000 + Ollama)..."
+	PYTHONPATH=src python tests/eval/judge/run_judge.py
 
 seal: ## Seal a secret for the cluster's Sealed Secrets controller. Usage: make seal SECRET_NAME=my-secret KEY=mykey VALUE=myval
 	@if [ -z "$(SECRET_NAME)" ] || [ -z "$(KEY)" ] || [ -z "$(VALUE)" ]; then \

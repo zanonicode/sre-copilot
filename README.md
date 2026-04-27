@@ -1,13 +1,67 @@
 # SRE Copilot
 
+[![CI](https://github.com/zanonicode/sre-copilot/actions/workflows/ci.yml/badge.svg)](https://github.com/zanonicode/sre-copilot/actions/workflows/ci.yml)
+[![Nightly Eval](https://github.com/zanonicode/sre-copilot/actions/workflows/nightly-eval.yml/badge.svg)](https://github.com/zanonicode/sre-copilot/actions/workflows/nightly-eval.yml)
+[![Release](https://github.com/zanonicode/sre-copilot/actions/workflows/release.yml/badge.svg)](https://github.com/zanonicode/sre-copilot/actions/workflows/release.yml)
+
 A kind-native, locally-runnable SRE assistant: streaming LLM log analysis, postmortem generation, full LGTM observability, GitOps via ArgoCD, and progressive delivery via Argo Rollouts — running entirely on your MacBook.
 
-> **Sprint 1 (Foundations)** — end-to-end FastAPI + Next.js in a 3-node kind cluster with streaming SSE against a local Ollama model.
+## What It Looks Like
+
+```text
+                Reviewer Browser  (desktop Chrome)
+              https://sre-copilot.localtest.me
+                          │  HTTPS + SSE
+                          ▼
+       ┌──────────────────────────────────────────────┐
+       │     kind cluster: sre-copilot (3 nodes)      │
+       │                                              │
+       │  worker-platform          worker-apps        │
+       │  ┌─────────────────┐     ┌──────────────┐   │
+       │  │ argocd          │     │ frontend ×1  │   │
+       │  │ sealed-secrets  │     │ (Next.js)    │   │
+       │  │ argo-rollouts   │◀───▶│              │   │
+       │  │ traefik         │     │ backend ×2   │   │
+       │  │ otel-collector  │ SSE │ (FastAPI)    │   │
+       │  │ loki/tempo/prom │     │ Rollout+PDB  │   │
+       │  │ grafana         │     └──────┬───────┘   │
+       │  └─────────────────┘           │            │
+       │       OTLP push                │ HTTP       │
+       │                         ExternalName        │
+       └─────────────────────────────── ┼ ───────────┘
+                                        ▼
+                              host:11434 (Ollama)
+                         qwen2.5:7b-instruct-q4_K_M
+                              Metal GPU / MPS
+```
+
+**Loom walkthrough:** [placeholder — see docs/loom-script.md] (3-minute recorded demo)
+
+## Why This Stack
+
+Most "demo repos" are scaffolding. This one runs a real incident-response workflow end-to-end:
+
+1. **Log analysis streams tokens** from a local Qwen 2.5 7B via SSE — TTFT visible in Grafana
+2. **Every request produces a distributed trace** in Tempo, including a synthetic span for the Ollama host hop
+3. **ArgoCD owns everything** — push to main, 13 Applications sync in wave order
+4. **Canary rollout is demoable in 2 minutes** — Argo Rollouts shifts traffic 25%→50%→100% with Prometheus AnalysisTemplate gating
+5. **Eval pipeline runs nightly** — Llama 3.1 8B judges Qwen output against labeled ground truth; results committed to the repo
+
+The decisions that made this possible are in [docs/adr/](docs/adr/) — eight ADRs covering every load-bearing choice.
+
+## Platform: What Is Deployed vs Documented-Only
+
+**Deployed (in cluster):** ArgoCD, Argo Rollouts, Sealed Secrets, Traefik, Loki, Grafana, Tempo, Prometheus, OTel Collector, NetworkPolicy egress-denial.
+
+**Documented-only** (deferred per [ADR-002](docs/adr/0002-lean-platform-kit.md) — each has a doc explaining why and how to add it):
+- Kyverno policy enforcement → [docs/policy.md](docs/policy.md)
+- Trivy Operator continuous scanning → [docs/security.md](docs/security.md) (one-shot `trivy image` runs in CI)
+- Chaos Mesh → [docs/chaos.md](docs/chaos.md) (canary + PDB cover the resilience story)
 
 ## Architecture
 
 ```text
-Browser → Traefik (TLS) → frontend (Next.js) → backend (FastAPI ×2)
+Browser → Traefik (TLS) → frontend (Next.js) → backend (FastAPI ×2, Argo Rollouts)
                                                       │
                                           ExternalName Service
                                                       │
@@ -15,9 +69,7 @@ Browser → Traefik (TLS) → frontend (Next.js) → backend (FastAPI ×2)
                                      qwen2.5:7b-instruct-q4_K_M
 ```
 
-**Platform components deployed in S1:** kind cluster, Traefik ingress, Redis (cache placeholder), Ollama ExternalName service, FastAPI backend (×2 replicas, PDB, HPA), Next.js frontend.
-
-**Documented-only (S3+):** ArgoCD, Argo Rollouts, Sealed Secrets, LGTM observability stack, NetworkPolicy egress-denial. See [docs/policy.md](docs/policy.md) for rationale.
+**Deployed:** kind cluster (3 nodes), Traefik ingress, Ollama ExternalName service, FastAPI backend (×2 replicas, PDB, HPA, Argo Rollouts Rollout), Next.js frontend, ArgoCD (13 Applications), Sealed Secrets, Argo Rollouts, LGTM stack (Loki + Grafana + Tempo + Prometheus), OTel Collector, NetworkPolicy egress-denial.
 
 ## Prerequisites
 
@@ -310,8 +362,52 @@ kubectl get ingressroute -n sre-copilot
 
 If the IngressRoute is missing, re-run `helmfile sync` (or [`make up`](Makefile)). If Traefik is healthy but the host doesn't resolve, confirm `localtest.me` is not blocked by your DNS provider — it's a public wildcard pointing at `127.0.0.1`.
 
+## Architecture Decisions
+
+Eight ADRs document every load-bearing choice in this project:
+
+| ADR | Decision | Why It Matters |
+|-----|----------|----------------|
+| [ADR-001](docs/adr/0001-kind-native-runtime.md) | kind from day 1, no docker-compose | Shows Kubernetes literacy from commit 1 |
+| [ADR-002](docs/adr/0002-lean-platform-kit.md) | Lean kit — deploy what has a demo moment, document the rest | Every component narrates in 10 min |
+| [ADR-003](docs/adr/0003-ollama-externalname.md) | Ollama on host via `ExternalName` Service | Metal GPU is unreachable inside Docker; ExternalName keeps backend code production-shaped |
+| [ADR-004](docs/adr/0004-hybrid-eval-strategy.md) | 3-layer eval (pytest + Llama judge + manual spot-check) | Per-commit gate + nightly quality signal + human calibration |
+| [ADR-005](docs/adr/0005-hybrid-grounding-data.md) | Loghub HDFS + synthetic logs; real + synthetic postmortems | Controllable demo + realistic eval |
+| [ADR-006](docs/adr/0006-backend-statelessness.md) | Backend fully stateless — no sticky sessions, no Redis | Canary-compatible; simplifies reasoning |
+| [ADR-007](docs/adr/0007-host-bridge-cidr.md) | Configurable `hostBridgeCIDR` via helmfile env-templating | Demo works on Docker Desktop, OrbStack, Colima, Linux |
+| [ADR-008](docs/adr/0008-per-machine-env-overridable.md) | 4-layer per-machine env-override pattern | 5 overridable settings, zero required overrides on canonical M3/16GB |
+
+## Production Path (AWS)
+
+Curious how this migrates to EKS? See [docs/aws-migration.md](docs/aws-migration.md) — covers vLLM on Karpenter GPU nodes, IRSA + External Secrets Operator replacing Sealed Secrets, AWS Load Balancer Controller replacing Traefik, and the exact component substitution map.
+
+The migration is a Service swap and a Terraform rewrite — the backend code, Helm charts, ArgoCD Applications, and Argo Rollouts manifests are unchanged.
+
+## What I Learned
+
+This project started as a way to demonstrate platform-engineering literacy in a 10-minute window. Building it surfaced a cluster of genuinely interesting problems that I did not anticipate from the design:
+
+**The ExternalName-to-Metal hop.** The brittlest seam in the stack is not the LLM — it's the network path from inside a kind pod to a host process that holds Metal GPU context. Solving this with an `ExternalName` Service and a configurable `hostBridgeCIDR` taught me that "portability" in a local stack is a real engineering problem, not a documentation task. ADR-007 and ADR-008 emerged from actual broken demos on OrbStack.
+
+**Distributed tracing across process boundaries.** You can't auto-instrument across the kind-cluster → host-Ollama boundary. The synthetic `ollama.inference` span — reconstructed retroactively from chunk arrival timestamps, with `synthetic: true` in its attributes — was the only way to attribute host-side latency without modifying Ollama. It's honest, discoverable, and taught me more about OTel span semantics than any tutorial.
+
+**Eval is the hardest part.** Writing the Pydantic schema is trivial. Writing the Llama-judge rubric that correctly distinguishes "same root cause, different words" from "hallucinated root cause" is not. The 3-layer eval strategy (structural → judge → human spot-check) came from realizing that each layer answers a different question and fails gracefully in a different way.
+
+**YAGNI at 16 GB.** Redis died early. Three components were documented-only instead of deployed. The 10-minute cold-start budget forced every component to earn its RAM. The constraint was the design.
+
+**Progressive delivery makes the demo.** The canary moment — watching the traffic weight shift while Prometheus gating stays green — is more compelling than any chaos experiment could be, because it's deterministic, naratable, and doesn't flake. ADR-002's reasoning about "demo moments" was right.
+
+## Runbooks
+
+| Runbook | Scenario |
+|---------|----------|
+| [ollama-host-down](docs/runbooks/ollama-host-down.md) | Ollama process stopped; backend returns 503 |
+| [backend-pod-loss](docs/runbooks/backend-pod-loss.md) | OOM kill, eviction, or Rollout step; PDB covers availability |
+| [eval-judge-drift](docs/runbooks/eval-judge-drift.md) | Nightly eval pass rate falls below 80% |
+| [sealed-secrets](docs/runbooks/sealed-secrets.md) | Sealed Secrets controller operations |
+
 ## Contributing
 
 Sprint 2 adds: NetworkPolicy egress-denial, Sealed Secrets, hardened probes/securityContext, integration tests.
 Sprint 3 adds: ArgoCD GitOps, full LGTM observability, OTel traces/metrics.
-Sprint 4 adds: Argo Rollouts canary, the full demo script, ADRs, portfolio README.
+Sprint 4 adds: Argo Rollouts canary, the full demo script, 8 ADRs, eval pipeline, portfolio README.

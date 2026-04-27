@@ -1,0 +1,40 @@
+version: "1.0"
+description: >
+  Rubric for Layer-2 Llama-judge evaluation. The judge scores a candidate
+  LogAnalysis response against labeled ground-truth data. Each dimension is
+  scored independently and the composite determines pass/fail for AT-011.
+
+dimensions:
+  root_cause_match:
+    description: >
+      Binary. The candidate's root_cause field describes the same underlying
+      failure as the ground truth root_cause. Paraphrase is acceptable; the
+      causal mechanism must match.
+    score: 0 or 1
+    pass_threshold: 1
+
+  remediation_soundness:
+    description: >
+      0-3 scale. The candidate's runbook steps are operationally sound and
+      actionable for the described root cause.
+    scores:
+      0: No runbook, or every step is wrong or dangerous
+      1: Some steps correct but missing critical actions
+      2: Mostly correct; minor gaps acceptable
+      3: All steps correct, well-ordered, and cover the root cause
+    pass_threshold: 2
+
+  hallucination:
+    description: >
+      Binary. Score 1 if the candidate invents facts not supported by the
+      log payload (e.g., wrong hostnames, fabricated error codes, references
+      to services not in the logs). Score 0 if grounded.
+    score: 0 (no hallucination) or 1 (hallucination detected)
+    pass_threshold: 0
+
+aggregate:
+  root_cause_match_rate:
+    description: >
+      Proportion of test cases where root_cause_match == 1.
+      Must be >= 0.80 (80%) for the nightly eval job to pass (AT-011).
+    minimum: 0.80

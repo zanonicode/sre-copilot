@@ -1,0 +1,93 @@
+name: Nightly Eval (Layer-2 Llama Judge)
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+    inputs:
+      pass_threshold:
+        description: "Root-cause-match rate threshold (default 0.80)"
+        required: false
+        default: "0.80"
+
+env:
+  PYTHON_VERSION: "3.12"
+  JUDGE_PASS_THRESHOLD: ${{ github.event.inputs.pass_threshold || '0.80' }}
+
+jobs:
+  judge-eval:
+    name: Layer-2 Llama Judge
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r src/backend/requirements.txt
+          pip install httpx
+
+      - name: Install Ollama
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama serve &
+          sleep 5
+
+      - name: Pull judge model
+        run: |
+          until ollama pull llama3.1:8b-instruct-q4_K_M; do
+            echo "pull incomplete — retrying in 10s"
+            sleep 10
+          done
+          ollama list
+
+      - name: Start backend (against local Ollama)
+        run: |
+          export OLLAMA_BASE_URL=http://localhost:11434/v1
+          export LLM_MODEL=llama3.1:8b-instruct-q4_K_M
+          export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
+          PYTHONPATH=src nohup python -m uvicorn backend.main:app \
+            --host 0.0.0.0 --port 8000 &
+          sleep 8
+          curl -sf http://localhost:8000/healthz || (echo "Backend failed to start"; exit 1)
+        env:
+          OTEL_EXPORTER_OTLP_ENDPOINT: http://localhost:4317
+
+      - name: Run Layer-2 judge
+        run: |
+          BACKEND_URL=http://localhost:8000 \
+          OLLAMA_BASE_URL=http://localhost:11434/v1 \
+          LLM_JUDGE_MODEL=llama3.1:8b-instruct-q4_K_M \
+          JUDGE_PASS_THRESHOLD=${{ env.JUDGE_PASS_THRESHOLD }} \
+          PYTHONPATH=src python tests/eval/judge/run_judge.py
+        env:
+          PYTHONPATH: src
+
+      - name: Commit judge run results
+        if: always()
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add datasets/eval/judge_runs/
+          if git diff --cached --quiet; then
+            echo "No new judge results to commit."
+          else
+            git commit -m "chore: nightly eval judge results $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            git push
+          fi
+
+      - name: Upload judge results artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: judge-results-${{ github.run_number }}
+          path: datasets/eval/judge_runs/
+          retention-days: 30

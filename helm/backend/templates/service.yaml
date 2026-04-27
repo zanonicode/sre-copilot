@@ -16,3 +16,45 @@ spec:
       port: {{ .Values.service.port }}
       targetPort: http
       protocol: TCP
+{{- if .Values.useArgoRollouts }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-stable
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: backend
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    rollouts-pod-template-hash: stable
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    app.kubernetes.io/name: backend
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-canary
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: backend
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    rollouts-pod-template-hash: canary
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    app.kubernetes.io/name: backend
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+{{- end }}

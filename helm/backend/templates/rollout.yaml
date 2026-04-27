@@ -1,6 +1,6 @@
-{{- if not .Values.useArgoRollouts }}
-apiVersion: apps/v1
-kind: Deployment
+{{- if .Values.useArgoRollouts }}
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
 metadata:
   name: backend
   namespace: {{ .Release.Namespace }}
@@ -89,4 +89,28 @@ spec:
       nodeSelector: {{ toYaml .Values.nodeSelector | nindent 8 }}
       tolerations: {{ toYaml .Values.tolerations | nindent 8 }}
       affinity: {{ toYaml .Values.affinity | nindent 8 }}
+  strategy:
+    canary:
+      maxSurge: 1
+      maxUnavailable: 0
+      canaryService: backend-canary
+      stableService: backend-stable
+      analysis:
+        templates:
+          - templateName: backend-canary-health
+        startingStep: 1
+        args:
+          - name: service-name
+            value: backend
+      steps:
+        - setWeight: 25
+        - pause:
+            duration: 30s
+        - analysis:
+            templates:
+              - templateName: backend-canary-health
+        - setWeight: 50
+        - pause:
+            duration: 30s
+        - setWeight: 100
 {{- end }}

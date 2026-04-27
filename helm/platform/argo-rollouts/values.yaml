@@ -1,0 +1,27 @@
+argo-rollouts:
+  controller:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
+    metrics:
+      enabled: true
+      serviceMonitor:
+        enabled: false
+  dashboard:
+    enabled: true
+    service:
+      type: ClusterIP
+      port: 3100
+    resources:
+      requests:
+        cpu: 25m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 64Mi
+  installCRDs: true
