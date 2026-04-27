@@ -9,6 +9,7 @@ spec:
   metrics:
     - name: error-rate
       interval: 15s
+      count: 4
       successCondition: result[0] < 0.05
       failureLimit: 2
       provider:
@@ -23,6 +24,7 @@ spec:
                   service_name="sre-copilot-backend"}[1m]))
     - name: p95-latency
       interval: 15s
+      count: 4
       successCondition: result[0] < 2.0
       failureLimit: 2
       provider:
