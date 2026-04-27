@@ -47,15 +47,27 @@ seed-models: ## Pull Ollama models and pre-pull all container images (run once)
 	docker build -t $(FRONTEND_IMAGE) src/frontend
 	@echo "==> seed-models complete"
 
-up: ## Create kind cluster, load images, deploy all S1 releases via helmfile
-	@echo "==> Provisioning kind cluster via Terraform..."
+up: ## Bootstrap kind + ArgoCD; ArgoCD then reconciles all releases (GitOps)
+	@echo "==> [1/5] Provisioning kind cluster via Terraform..."
 	cd terraform/local && terraform init -input=false && terraform apply -auto-approve
-	@echo "==> Loading images into kind..."
+	@echo "==> [2/5] Loading app images into kind..."
 	kind load docker-image $(BACKEND_IMAGE)  --name $(CLUSTER_NAME)
 	kind load docker-image $(FRONTEND_IMAGE) --name $(CLUSTER_NAME)
-	@echo "==> Syncing Helm releases..."
-	KUBECONFIG=$(KUBECONFIG) $(HELMFILE) sync
-	@echo "==> Cluster is up. Visit https://$(INGRESS_HOST)"
+	@echo "==> [3/5] Bootstrap traefik via helmfile (ingress needed before ArgoCD UI is reachable)..."
+	KUBECONFIG=$(KUBECONFIG) $(HELMFILE) sync --selector name=traefik
+	@echo "==> [4/5] Installing ArgoCD..."
+	$(KUBECTL) create namespace argocd --dry-run=client -o yaml | $(KUBECTL) apply -f -
+	$(KUBECTL) create namespace observability --dry-run=client -o yaml | $(KUBECTL) apply -f -
+	$(KUBECTL) apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/v2.12.0/manifests/install.yaml
+	@echo "    Waiting for argocd-server to be ready (up to 5 min)..."
+	$(KUBECTL) rollout status -n argocd deployment/argocd-server --timeout=300s
+	@echo "==> [5/5] Applying root Application (ArgoCD reconciles all releases via app-of-apps)..."
+	$(KUBECTL) apply -f argocd/bootstrap/root-app.yaml -n argocd
+	@echo ""
+	@echo "==> Cluster bootstrap complete. ArgoCD reconciling all releases (60-180s)."
+	@echo "    Watch:  kubectl get applications -n argocd -w"
+	@echo "    Visit:  https://$(INGRESS_HOST)"
+	@echo "    Then:   make smoke"
 
 down: ## Destroy kind cluster and clean Terraform state
 	cd terraform/local && terraform destroy -auto-approve || true
