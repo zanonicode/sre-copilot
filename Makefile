@@ -105,7 +105,8 @@ demo-canary: ## Build backend:v2, load into kind, bump Rollout image, watch prog
 	@echo "==> [demo-canary] Loading backend:v2 into kind cluster..."
 	kind load docker-image $(BACKEND_V2_IMAGE) --name $(CLUSTER_NAME)
 	@echo "==> [demo-canary] Patching Rollout image to v2..."
-	$(KUBECTL) set image rollout/backend backend=$(BACKEND_V2_IMAGE) -n sre-copilot
+	$(KUBECTL) patch rollout backend -n sre-copilot --type=merge \
+	     -p '{"spec":{"template":{"spec":{"containers":[{"name":"backend","image":"$(BACKEND_V2_IMAGE)"}]}}}}'
 	@echo "==> [demo-canary] Watching Rollout progression (Ctrl+C to stop watching)..."
 	@echo "    Expected: 25%% → analysis pause → 50%% → 100%%"
 	@echo "    For richer visualization, install the plugin: brew install argoproj/tap/kubectl-argo-rollouts"
@@ -113,8 +114,8 @@ demo-canary: ## Build backend:v2, load into kind, bump Rollout image, watch prog
 
 demo-reset: ## Reset canary — revert backend Rollout to :latest and promote to stable
 	@echo "==> [demo-reset] Reverting backend Rollout to stable image ($(BACKEND_IMAGE))..."
-	$(KUBECTL) set image rollout/backend backend=$(BACKEND_IMAGE) -n sre-copilot
-	$(KUBECTL) patch rollout backend -n sre-copilot --type merge -p '{"status":{"pauseConditions":null}}' || true
+	$(KUBECTL) patch rollout backend -n sre-copilot --type=merge \
+	     -p '{"spec":{"template":{"spec":{"containers":[{"name":"backend","image":"$(BACKEND_IMAGE)"}]}}}}'
 	@echo "==> [demo-reset] Rollout reverted to $(BACKEND_IMAGE)"
 	@echo "    For full canary CLI control (promote/abort), install: brew install argoproj/tap/kubectl-argo-rollouts"
 
