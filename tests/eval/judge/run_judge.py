@@ -56,6 +56,35 @@ the GROUND TRUTH using this rubric:
 
 {rubric}
 
+CRITICAL SCORING RULES — read carefully:
+
+1. root_cause_match is SEMANTIC, not literal. The ground-truth
+   `root_cause_keywords` list contains EXAMPLE phrasings — they are hints,
+   NOT a list of substrings that must appear verbatim in the candidate.
+   Score 1 if the candidate describes the same underlying causal mechanism,
+   even if the vocabulary differs. Score 0 only if the candidate identifies
+   a fundamentally different cause.
+
+2. Examples of semantic matches that should score root_cause_match=1:
+   - GT keyword "heap exhaustion" ↔ candidate says "insufficient JVM heap"
+     (same mechanism: heap too small for working set)
+   - GT keyword "DataNode registration failure" ↔ candidate says "DataNode
+     could not register with NameNode" (same mechanism)
+   - GT keyword "OOM" ↔ candidate says "OutOfMemoryError" or "process killed
+     by OOMKiller" (same mechanism)
+
+3. Examples that should score root_cause_match=0 (genuine mismatch):
+   - GT keyword "DataNode registration failure" but candidate says only
+     "ephemeral port exhaustion" (port exhaustion is a possible CAUSE
+     of registration failure but is not itself the failure mode the log
+     shows; reading the log literally is required).
+   - GT keyword "memory leak" but candidate says "CPU spike" (different
+     resource, different mechanism).
+
+4. hallucination=1 ONLY if the candidate invents facts not supported by
+   the log (wrong hostnames, fabricated error codes, services not in the
+   logs). Using different vocabulary is NOT hallucination.
+
 GROUND TRUTH:
 {ground_truth}
 

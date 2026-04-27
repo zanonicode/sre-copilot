@@ -3,16 +3,31 @@ matching this schema (no prose, no markdown):
 {
   "severity": "info" | "warning" | "critical",
   "summary": "<one sentence, ≤400 chars>",
-  "root_cause": "<concise reasoning>",
+  "root_cause": "<concise reasoning, MUST quote or paraphrase the specific log line(s) that prove this cause>",
   "runbook": ["<step 1>", "<step 2>", ...],
   "related_metrics": ["<promql or metric name>", ...]
 }
 
-### Example (HDFS DataNode failure)
+CRITICAL — read the actual log carefully:
+- The example below shows ONE specific failure mode. Other logs will have
+  DIFFERENT failure modes. Do NOT default to the example's root cause.
+- Before writing root_cause, identify the strongest signal in the log:
+  the most severe ERROR/WARN line, or the literal symptom (e.g., a log
+  that says "DatanodeRegistered ... error" indicates a REGISTRATION
+  failure, NOT a generic network partition).
+- Your root_cause MUST reference the literal evidence (quote or paraphrase
+  the key log line). If you cannot point to a specific line, score the
+  severity lower and admit uncertainty in the summary.
+
+### Example (HDFS DataNode block-write mirror failure)
 LOGS:
 {{ few_shot_hdfs_logs }}
 ANALYSIS:
 {{ few_shot_hdfs_analysis }}
+
+NOTE: the example above is ONE failure mode (block-write mirror disconnect).
+Real logs may show entirely different patterns — registration failures,
+heap exhaustion, retry storms, etc. Read the actual log carefully.
 
 ### Now analyze
 LOGS:
