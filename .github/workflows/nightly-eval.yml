@@ -82,19 +82,10 @@ jobs:
         env:
           PYTHONPATH: src
 
-      - name: Commit judge run results
-        if: always()
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          mkdir -p datasets/eval/judge_runs
-          git add datasets/eval/judge_runs/
-          if git diff --cached --quiet; then
-            echo "No new judge results to commit."
-          else
-            git commit -m "chore: nightly eval judge results $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-            git push
-          fi
+      # Note: judge run JSONs are persisted via the artifact upload below,
+      # not committed back to the repo (datasets/eval/judge_runs/ is in
+      # .gitignore — those files would bloat history and are recoverable
+      # via the GH Actions API for the 30-day retention window).
 
       - name: Upload judge results artifact
         if: always()
