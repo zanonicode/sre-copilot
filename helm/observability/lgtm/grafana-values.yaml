@@ -47,9 +47,17 @@ datasources:
         url: http://loki.observability.svc.cluster.local:3100
         jsonData:
           derivedFields:
+            # OTel logs SDK serializes the trace context as `traceid` (no
+            # underscore) at the top level of the LogRecord JSON. The legacy
+            # JsonFormatter in our backend used `trace_id`, so we match both.
+            - datasourceName: Tempo
+              matcherRegex: '"traceid":"([a-f0-9]{32})"'
+              name: TraceID
+              url: "${__value.raw}"
+              datasourceUid: tempo
             - datasourceName: Tempo
               matcherRegex: '"trace_id":"([a-f0-9]{32})"'
-              name: TraceID
+              name: TraceID (legacy)
               url: "${__value.raw}"
               datasourceUid: tempo
       - name: Tempo

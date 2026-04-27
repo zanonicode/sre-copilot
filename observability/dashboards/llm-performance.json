@@ -157,33 +157,15 @@
     },
     {
       "id": 7,
-      "type": "traces",
-      "title": "Recent LLM Traces",
-      "description": "Latest ollama.host_call spans from Tempo. Requires Tempo's metrics_generator with local-blocks processor to support TraceQL search on filesystem backend.",
+      "type": "logs",
+      "title": "Recent LLM Traces (via Loki, click trace_id to open in Tempo)",
+      "description": "Backend log lines from /analyze/logs and /generate/postmortem with their trace_id. Click any trace_id link to drill into the full span tree in Tempo. Loki + Tempo correlation via derived fields.",
       "gridPos": { "h": 10, "w": 24, "x": 0, "y": 12 },
-      "datasource": { "uid": "tempo" },
+      "datasource": { "uid": "loki" },
+      "options": { "showTime": true, "sortOrder": "Descending", "dedupStrategy": "exact", "wrapLogMessage": true, "showCommonLabels": false },
       "targets": [
         {
-          "queryType": "traceqlSearch",
-          "filters": [
-            {
-              "id": "service-name",
-              "tag": "service.name",
-              "operator": "=",
-              "scope": "resource",
-              "value": ["sre-copilot-backend"],
-              "valueType": "string"
-            },
-            {
-              "id": "span-name",
-              "tag": "name",
-              "operator": "=",
-              "scope": "intrinsic",
-              "value": "ollama.host_call",
-              "valueType": "string"
-            }
-          ],
-          "limit": 20,
+          "expr": "{service_name=\"sre-copilot-backend\"} | json | attributes_endpoint=~\"/analyze/.*|/generate/.*\" | line_format \"{{.severity}} {{.attributes_endpoint}} traceid={{.traceid}}\"",
           "refId": "A"
         }
       ]

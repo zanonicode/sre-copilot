@@ -885,7 +885,7 @@ data:
           "id": 7,
           "type": "traces",
           "title": "Recent LLM Traces",
-          "description": "Latest ollama.host_call spans from Tempo (filesystem backend uses nativeSearch, not backend TraceQL search).",
+          "description": "Latest ollama.host_call spans from Tempo. Requires Tempo's metrics_generator with local-blocks processor to support TraceQL search on filesystem backend.",
           "gridPos": {
             "h": 10,
             "w": 24,
@@ -897,9 +897,27 @@ data:
           },
           "targets": [
             {
-              "queryType": "nativeSearch",
-              "serviceName": "sre-copilot-backend",
-              "spanName": "ollama.host_call",
+              "queryType": "traceqlSearch",
+              "filters": [
+                {
+                  "id": "service-name",
+                  "tag": "service.name",
+                  "operator": "=",
+                  "scope": "resource",
+                  "value": [
+                    "sre-copilot-backend"
+                  ],
+                  "valueType": "string"
+                },
+                {
+                  "id": "span-name",
+                  "tag": "name",
+                  "operator": "=",
+                  "scope": "intrinsic",
+                  "value": "ollama.host_call",
+                  "valueType": "string"
+                }
+              ],
               "limit": 20,
               "refId": "A"
             }
