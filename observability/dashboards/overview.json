@@ -17,7 +17,7 @@
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
       "targets": [
         {
-          "expr": "sum(rate(http_server_duration_count{service_name=\"sre-copilot-backend\"}[5m]))",
+          "expr": "sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\"}[5m]))",
           "legendFormat": "req/s",
           "refId": "A"
         }
@@ -41,7 +41,7 @@
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
       "targets": [
         {
-          "expr": "sum(rate(http_server_duration_count{service_name=\"sre-copilot-backend\",http_status_code=~\"5..\"}[5m])) / sum(rate(http_server_duration_count{service_name=\"sre-copilot-backend\"}[5m]))",
+          "expr": "sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\",http_status_code=~\"5..\"}[5m])) / sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\"}[5m]))",
           "legendFormat": "5xx rate",
           "refId": "A"
         }
@@ -91,7 +91,7 @@
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
       "targets": [
         {
-          "expr": "1 - sum(rate(http_server_duration_count{service_name=\"sre-copilot-backend\",http_status_code=~\"5..\"}[7d])) / sum(rate(http_server_duration_count{service_name=\"sre-copilot-backend\"}[7d]))",
+          "expr": "1 - sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\",http_status_code=~\"5..\"}[7d])) / sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\"}[7d]))",
           "legendFormat": "availability",
           "refId": "A"
         }
@@ -106,12 +106,12 @@
       "fieldConfig": { "defaults": { "unit": "reqps" } },
       "targets": [
         {
-          "expr": "sum(rate(http_server_duration_count{service_name=\"sre-copilot-backend\"}[5m]))",
+          "expr": "sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\"}[5m]))",
           "legendFormat": "total",
           "refId": "A"
         },
         {
-          "expr": "sum(rate(http_server_duration_count{service_name=\"sre-copilot-backend\",http_status_code=~\"5..\"}[5m]))",
+          "expr": "sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\",http_status_code=~\"5..\"}[5m]))",
           "legendFormat": "5xx",
           "refId": "B"
         }

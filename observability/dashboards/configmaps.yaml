@@ -26,7 +26,7 @@ data:
           "datasource": { "uid": "prometheus" },
           "fieldConfig": { "defaults": { "unit": "reqps" } },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
-          "targets": [{ "expr": "sum(rate(http_server_duration_count{service_name=\"sre-copilot-backend\"}[5m]))", "legendFormat": "req/s", "refId": "A" }]
+          "targets": [{ "expr": "sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\"}[5m]))", "legendFormat": "req/s", "refId": "A" }]
         },
         {
           "id": 2, "type": "stat", "title": "5xx Error Rate",
@@ -34,7 +34,7 @@ data:
           "datasource": { "uid": "prometheus" },
           "fieldConfig": { "defaults": { "unit": "percentunit", "thresholds": { "mode": "absolute", "steps": [{"color":"green","value":null},{"color":"red","value":0.01}] } } },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
-          "targets": [{ "expr": "sum(rate(http_server_duration_count{service_name=\"sre-copilot-backend\",http_status_code=~\"5..\"}[5m])) / sum(rate(http_server_duration_count{service_name=\"sre-copilot-backend\"}[5m]))", "legendFormat": "5xx rate", "refId": "A" }]
+          "targets": [{ "expr": "sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\",http_status_code=~\"5..\"}[5m])) / sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\"}[5m]))", "legendFormat": "5xx rate", "refId": "A" }]
         },
         {
           "id": 3, "type": "stat", "title": "Backend Pods Ready",
@@ -50,7 +50,7 @@ data:
           "datasource": { "uid": "prometheus" },
           "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0.99, "max": 1.0 } },
           "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
-          "targets": [{ "expr": "1 - sum(rate(http_server_duration_count{service_name=\"sre-copilot-backend\",http_status_code=~\"5..\"}[7d])) / sum(rate(http_server_duration_count{service_name=\"sre-copilot-backend\"}[7d]))", "legendFormat": "availability", "refId": "A" }]
+          "targets": [{ "expr": "1 - sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\",http_status_code=~\"5..\"}[7d])) / sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\"}[7d]))", "legendFormat": "availability", "refId": "A" }]
         },
         {
           "id": 5, "type": "timeseries", "title": "Request Rate Over Time",
@@ -58,8 +58,8 @@ data:
           "datasource": { "uid": "prometheus" },
           "fieldConfig": { "defaults": { "unit": "reqps" } },
           "targets": [
-            { "expr": "sum(rate(http_server_duration_count{service_name=\"sre-copilot-backend\"}[5m]))", "legendFormat": "total", "refId": "A" },
-            { "expr": "sum(rate(http_server_duration_count{service_name=\"sre-copilot-backend\",http_status_code=~\"5..\"}[5m]))", "legendFormat": "5xx", "refId": "B" }
+            { "expr": "sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\"}[5m]))", "legendFormat": "total", "refId": "A" },
+            { "expr": "sum(rate(http_server_duration_milliseconds_count{service_name=\"sre-copilot-backend\",http_status_code=~\"5..\"}[5m]))", "legendFormat": "5xx", "refId": "B" }
           ]
         },
         {
