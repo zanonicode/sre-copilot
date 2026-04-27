@@ -3,6 +3,10 @@
 .env.local
 .env.*.local
 
+# mkcert-generated TLS material — never commit private keys.
+# Regenerate locally with `make trust-certs`.
+.certs/
+
 # Python
 __pycache__/
 *.pyc

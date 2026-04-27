@@ -190,6 +190,35 @@ clean-replicasets: ## Delete all ReplicaSets with 0 desired/current/ready replic
 	done
 	@echo "==> [clean-replicasets] Done. Going forward, revisionHistoryLimit=3 on backend/frontend prevents new accumulation."
 
+trust-certs: ## Install mkcert local CA + mint wildcard cert for *.localtest.me, plumb into Traefik via TLSStore default
+	@command -v mkcert > /dev/null 2>&1 || { \
+	  echo "==> [trust-certs] mkcert not installed."; \
+	  echo "    macOS:  brew install mkcert nss"; \
+	  echo "    Linux:  see https://github.com/FiloSottile/mkcert#installation"; \
+	  exit 1; \
+	}
+	@echo "==> [trust-certs] Installing local root CA into system + browser trust stores..."
+	mkcert -install
+	@mkdir -p .certs
+	@if [ ! -f .certs/localtest.me.pem ] || [ ! -f .certs/localtest.me-key.pem ]; then \
+	  echo "==> [trust-certs] Minting wildcard cert for *.localtest.me + localtest.me..."; \
+	  cd .certs && mkcert -cert-file localtest.me.pem -key-file localtest.me-key.pem \
+	    "*.localtest.me" "localtest.me" "*.sre-copilot.localtest.me"; \
+	else \
+	  echo "==> [trust-certs] Cert already exists at .certs/localtest.me.pem (delete to re-mint)."; \
+	fi
+	@echo "==> [trust-certs] Creating TLS Secret in platform namespace..."
+	$(KUBECTL) create namespace platform --dry-run=client -o yaml | $(KUBECTL) apply -f -
+	$(KUBECTL) create secret tls localtest-me-tls -n platform \
+	  --cert=.certs/localtest.me.pem --key=.certs/localtest.me-key.pem \
+	  --dry-run=client -o yaml | $(KUBECTL) apply -f -
+	@echo "==> [trust-certs] Applying Traefik TLSStore default (one cert serves all IngressRoutes)..."
+	@printf 'apiVersion: traefik.io/v1alpha1\nkind: TLSStore\nmetadata:\n  name: default\n  namespace: platform\nspec:\n  defaultCertificate:\n    secretName: localtest-me-tls\n' \
+	  | $(KUBECTL) apply -f -
+	@echo ""
+	@echo "==> [trust-certs] Done. Restart your browser to pick up the new CA."
+	@echo "    Verify:  curl -v https://api.sre-copilot.localtest.me/healthz  (no -k needed!)"
+
 smoke: ## Run end-to-end smoke tests (healthz + SSE + ingress + Ollama + memory + NP egress)
 	@$(KUBECTL) port-forward -n sre-copilot svc/backend 8000:8000 > /tmp/sre-smoke-pf.log 2>&1 & \
 	PF=$$!; trap "kill $$PF 2>/dev/null" EXIT; \
