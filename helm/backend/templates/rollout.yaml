@@ -109,6 +109,9 @@ spec:
         - analysis:
             templates:
               - templateName: backend-canary-health
+            args:
+              - name: service-name
+                value: backend
         - setWeight: 50
         - pause:
             duration: 30s
