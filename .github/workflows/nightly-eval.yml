@@ -9,13 +9,20 @@ on:
         description: "Root-cause-match rate threshold (default 0.80)"
         required: false
         default: "0.80"
+      sample_size:
+        description: "How many ground-truth records to evaluate (CI default 6, full corpus is 10)"
+        required: false
+        default: "6"
 
 env:
   PYTHON_VERSION: "3.12"
   JUDGE_PASS_THRESHOLD: ${{ github.event.inputs.pass_threshold || '0.80' }}
-  # Two 7-8B Q4 models running CPU-only on a 4 vCPU runner against 10 records
-  # is ~22-28 min. Unbuffer stdout so progress is visible in real-time —
-  # otherwise pipe-mode block buffering hides everything until process exit.
+  # Per-record cost on ubuntu-latest is ~5 min (one Qwen analyze call + one
+  # Llama judge call, both CPU-only Q4). 6 records ≈ 30-35 min wall clock.
+  # Override via workflow_dispatch sample_size input or unset locally for full 10.
+  JUDGE_SAMPLE_SIZE: ${{ github.event.inputs.sample_size || '6' }}
+  # Unbuffer stdout so progress lines are visible during the long judge step
+  # (pipe-mode block buffering otherwise hides everything until process exit).
   PYTHONUNBUFFERED: "1"
 
 jobs:

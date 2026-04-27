@@ -43,6 +43,11 @@ BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
 LLM_JUDGE_MODEL = os.environ.get("LLM_JUDGE_MODEL", "llama3.1:8b-instruct-q4_K_M")
 JUDGE_PASS_THRESHOLD = float(os.environ.get("JUDGE_PASS_THRESHOLD", "0.80"))
+# JUDGE_SAMPLE_SIZE: cap how many ground-truth records to evaluate.
+# CI sets this to 6 (≈35min wall time on ubuntu-latest); unset = full corpus.
+# Sampling is deterministic (sorted alphabetically, take first N) so re-runs
+# grade the same records and pass-rate trends are comparable across runs.
+JUDGE_SAMPLE_SIZE = int(os.environ["JUDGE_SAMPLE_SIZE"]) if os.environ.get("JUDGE_SAMPLE_SIZE") else None
 
 JUDGE = OpenAI(base_url=OLLAMA_BASE_URL, api_key="ollama")
 
@@ -125,7 +130,24 @@ def main() -> int:
         print(f"ERROR: no ground-truth files in {GROUND_TRUTH_DIR}", file=sys.stderr)
         return 1
 
-    print(f"==> Layer-2 judge: evaluating {len(gt_paths)} ground-truth records")
+    total_records = len(gt_paths)
+    if JUDGE_SAMPLE_SIZE and JUDGE_SAMPLE_SIZE < total_records:
+        # Stratify by filename prefix (e.g., hdfs_, synth_) so each category
+        # gets proportional representation. Within each bucket take the first
+        # alphabetically — keeps sampling deterministic across runs.
+        buckets: dict[str, list] = {}
+        for p in gt_paths:
+            prefix = p.stem.split("_")[0]
+            buckets.setdefault(prefix, []).append(p)
+        per_bucket = max(1, JUDGE_SAMPLE_SIZE // len(buckets))
+        sampled = []
+        for prefix, paths in sorted(buckets.items()):
+            sampled.extend(paths[:per_bucket])
+        gt_paths = sampled[:JUDGE_SAMPLE_SIZE]
+        print(f"==> Layer-2 judge: sampled {len(gt_paths)}/{total_records} records "
+              f"(JUDGE_SAMPLE_SIZE={JUDGE_SAMPLE_SIZE}, stratified by prefix)")
+    else:
+        print(f"==> Layer-2 judge: evaluating {total_records} ground-truth records")
     print(f"    judge model : {LLM_JUDGE_MODEL}")
     print(f"    backend url : {BACKEND_URL}")
     print(f"    pass threshold: {JUDGE_PASS_THRESHOLD:.0%}")
