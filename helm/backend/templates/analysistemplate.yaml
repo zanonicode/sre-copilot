@@ -1,8 +1,12 @@
+{{- if .Values.useArgoRollouts }}
 apiVersion: argoproj.io/v1alpha1
 kind: AnalysisTemplate
 metadata:
   name: backend-canary-health
-  namespace: sre-copilot
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: backend
+    app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
   args:
     - name: service-name
@@ -33,3 +37,4 @@ spec:
           query: |
             histogram_quantile(0.95,
               sum by (le) (rate(llm_ttft_seconds_bucket[1m])))
+{{- end }}
