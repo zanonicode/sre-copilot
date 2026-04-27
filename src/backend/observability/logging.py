@@ -29,8 +29,14 @@ class JsonFormatter(logging.Formatter):
 
 
 def configure() -> None:
-    h = logging.StreamHandler(sys.stdout)
-    h.setFormatter(JsonFormatter())
+    # Append (don't replace) so we compose with the OTel LoggingHandler that
+    # init_observability_providers() may have already attached to the root
+    # logger. `root.handlers = [h]` would silently wipe the OTel exporter
+    # and break the logs-to-Loki pipeline.
     root = logging.getLogger()
-    root.handlers = [h]
+    if not any(isinstance(h, logging.StreamHandler) and getattr(h, "_sre_json", False) for h in root.handlers):
+        h = logging.StreamHandler(sys.stdout)
+        h.setFormatter(JsonFormatter())
+        h._sre_json = True  # marker so re-configure() is idempotent
+        root.addHandler(h)
     root.setLevel(logging.INFO)
