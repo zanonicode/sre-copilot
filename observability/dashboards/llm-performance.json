@@ -158,14 +158,14 @@
     {
       "id": 7,
       "type": "logs",
-      "title": "Recent LLM Traces (via Loki, click trace_id to open in Tempo)",
-      "description": "Backend log lines from /analyze/logs and /generate/postmortem with their trace_id. Click any trace_id link to drill into the full span tree in Tempo. Loki + Tempo correlation via derived fields.",
+      "title": "Recent LLM Traces (via Loki, click traceid to open in Tempo)",
+      "description": "Backend log lines for /analyze/* and /generate/* endpoints with trace context. Each traceid value is a clickable link to Tempo via Loki's derivedFields. Loki + Tempo correlation without needing TraceQL backend search.",
       "gridPos": { "h": 10, "w": 24, "x": 0, "y": 12 },
       "datasource": { "uid": "loki" },
-      "options": { "showTime": true, "sortOrder": "Descending", "dedupStrategy": "exact", "wrapLogMessage": true, "showCommonLabels": false },
+      "options": { "showTime": true, "sortOrder": "Descending", "dedupStrategy": "none", "wrapLogMessage": true, "prettifyLogMessage": false, "enableLogDetails": true, "showLabels": false, "showCommonLabels": false },
       "targets": [
         {
-          "expr": "{service_name=\"sre-copilot-backend\"} | json | attributes_endpoint=~\"/analyze/.*|/generate/.*\" | line_format \"{{.severity}} {{.attributes_endpoint}} traceid={{.traceid}}\"",
+          "expr": "{service_name=\"sre-copilot-backend\"} |~ \"/analyze/|/generate/\"",
           "refId": "A"
         }
       ]
