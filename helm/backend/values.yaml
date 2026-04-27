@@ -27,7 +27,7 @@ pdb:
   minAvailable: 1
 
 env:
-  OTEL_EXPORTER_OTLP_ENDPOINT: ""
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.observability.svc.cluster.local:4317"
   ANOMALY_INJECTOR_TOKEN: ""
 
 ollama:
@@ -36,6 +36,10 @@ ollama:
 llm:
   model: "qwen2.5:7b-instruct-q4_K_M"
   judgeModel: "llama3.1:8b-instruct-q4_K_M"
+
+serviceMonitor:
+  enabled: true
+  interval: 30s
 
 nodeSelector: {}
 tolerations: []

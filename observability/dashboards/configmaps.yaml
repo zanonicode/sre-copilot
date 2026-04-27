@@ -1,0 +1,279 @@
+---
+# Grafana dashboard ConfigMaps — auto-loaded by Grafana sidecar (label: grafana_dashboard=1)
+# Deploy: kubectl apply -f observability/dashboards/configmaps.yaml
+# These are also applied by ArgoCD via the grafana Application (sidecar watches for this label).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-overview
+  namespace: observability
+  labels:
+    grafana_dashboard: "1"
+  annotations:
+    grafana_folder: "SRE Copilot"
+data:
+  overview.json: |-
+    {
+      "title": "SRE Copilot Overview",
+      "uid": "sre-overview",
+      "schemaVersion": 36,
+      "refresh": "30s",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1, "type": "stat", "title": "Request Rate",
+          "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+          "datasource": { "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "reqps" } },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+          "targets": [{ "expr": "sum(rate(http_server_duration_count{service_name=\"sre-copilot-backend\"}[5m]))", "legendFormat": "req/s", "refId": "A" }]
+        },
+        {
+          "id": 2, "type": "stat", "title": "5xx Error Rate",
+          "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+          "datasource": { "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "percentunit", "thresholds": { "mode": "absolute", "steps": [{"color":"green","value":null},{"color":"red","value":0.01}] } } },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+          "targets": [{ "expr": "sum(rate(http_server_duration_count{service_name=\"sre-copilot-backend\",http_status_code=~\"5..\"}[5m])) / sum(rate(http_server_duration_count{service_name=\"sre-copilot-backend\"}[5m]))", "legendFormat": "5xx rate", "refId": "A" }]
+        },
+        {
+          "id": 3, "type": "stat", "title": "Backend Pods Ready",
+          "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+          "datasource": { "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [{"color":"red","value":null},{"color":"green","value":2}] } } },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+          "targets": [{ "expr": "kube_deployment_status_replicas_available{deployment=\"backend\"}", "legendFormat": "ready", "refId": "A" }]
+        },
+        {
+          "id": 4, "type": "stat", "title": "Availability SLO (7d)",
+          "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+          "datasource": { "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0.99, "max": 1.0 } },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+          "targets": [{ "expr": "1 - sum(rate(http_server_duration_count{service_name=\"sre-copilot-backend\",http_status_code=~\"5..\"}[7d])) / sum(rate(http_server_duration_count{service_name=\"sre-copilot-backend\"}[7d]))", "legendFormat": "availability", "refId": "A" }]
+        },
+        {
+          "id": 5, "type": "timeseries", "title": "Request Rate Over Time",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+          "datasource": { "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "reqps" } },
+          "targets": [
+            { "expr": "sum(rate(http_server_duration_count{service_name=\"sre-copilot-backend\"}[5m]))", "legendFormat": "total", "refId": "A" },
+            { "expr": "sum(rate(http_server_duration_count{service_name=\"sre-copilot-backend\",http_status_code=~\"5..\"}[5m]))", "legendFormat": "5xx", "refId": "B" }
+          ]
+        },
+        {
+          "id": 6, "type": "logs", "title": "Backend Logs",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+          "datasource": { "uid": "loki" },
+          "options": { "showTime": true, "sortOrder": "Descending" },
+          "targets": [{ "expr": "{service_name=\"sre-copilot-backend\"}", "refId": "A" }]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-llm-performance
+  namespace: observability
+  labels:
+    grafana_dashboard: "1"
+  annotations:
+    grafana_folder: "SRE Copilot"
+data:
+  llm-performance.json: |-
+    {
+      "title": "LLM Performance",
+      "uid": "llm-perf",
+      "schemaVersion": 36,
+      "refresh": "15s",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1, "type": "stat", "title": "TTFT p95 (5m)",
+          "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+          "datasource": { "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "s", "thresholds": { "mode": "absolute", "steps": [{"color":"green","value":null},{"color":"yellow","value":1.5},{"color":"red","value":2.0}] } } },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+          "targets": [{ "expr": "histogram_quantile(0.95, sum by (le) (rate(llm_ttft_seconds_bucket[5m])))", "legendFormat": "p95 TTFT", "refId": "A" }]
+        },
+        {
+          "id": 2, "type": "stat", "title": "Full Response p90 (5m)",
+          "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+          "datasource": { "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "s", "thresholds": { "mode": "absolute", "steps": [{"color":"green","value":null},{"color":"yellow","value":20},{"color":"red","value":30}] } } },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+          "targets": [{ "expr": "histogram_quantile(0.90, sum by (le) (rate(llm_response_seconds_bucket[5m])))", "legendFormat": "p90", "refId": "A" }]
+        },
+        {
+          "id": 3, "type": "stat", "title": "Output Tokens/s",
+          "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+          "datasource": { "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "short" } },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+          "targets": [{ "expr": "rate(llm_tokens_output_total[5m])", "legendFormat": "tokens/s", "refId": "A" }]
+        },
+        {
+          "id": 4, "type": "stat", "title": "Active LLM Requests",
+          "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+          "datasource": { "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "short" } },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+          "targets": [{ "expr": "llm_active_requests", "legendFormat": "active", "refId": "A" }]
+        },
+        {
+          "id": 5, "type": "timeseries", "title": "TTFT Percentiles",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+          "datasource": { "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "s" } },
+          "targets": [
+            { "expr": "histogram_quantile(0.50, sum by (le) (rate(llm_ttft_seconds_bucket[5m])))", "legendFormat": "p50", "refId": "A" },
+            { "expr": "histogram_quantile(0.95, sum by (le) (rate(llm_ttft_seconds_bucket[5m])))", "legendFormat": "p95", "refId": "B" },
+            { "expr": "histogram_quantile(0.99, sum by (le) (rate(llm_ttft_seconds_bucket[5m])))", "legendFormat": "p99", "refId": "C" }
+          ]
+        },
+        {
+          "id": 6, "type": "timeseries", "title": "Token Throughput",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+          "datasource": { "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "short" } },
+          "targets": [
+            { "expr": "rate(llm_tokens_output_total[5m])", "legendFormat": "output tokens/s", "refId": "A" },
+            { "expr": "rate(llm_tokens_input_total[5m])", "legendFormat": "input tokens/s", "refId": "B" }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-cluster-health
+  namespace: observability
+  labels:
+    grafana_dashboard: "1"
+  annotations:
+    grafana_folder: "SRE Copilot"
+data:
+  cluster-health.json: |-
+    {
+      "title": "Cluster Health",
+      "uid": "cluster-health",
+      "schemaVersion": 36,
+      "refresh": "30s",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1, "type": "stat", "title": "Pods Running",
+          "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+          "datasource": { "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "short" } },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+          "targets": [{ "expr": "count(kube_pod_status_phase{phase=\"Running\", namespace=~\"sre-copilot|platform|observability\"})", "legendFormat": "running pods", "refId": "A" }]
+        },
+        {
+          "id": 2, "type": "stat", "title": "Node Count",
+          "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+          "datasource": { "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "short" } },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+          "targets": [{ "expr": "count(kube_node_info)", "legendFormat": "nodes", "refId": "A" }]
+        },
+        {
+          "id": 3, "type": "timeseries", "title": "Container Memory (sre-copilot ns)",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+          "datasource": { "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "bytes" } },
+          "targets": [{ "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"sre-copilot\", container!=\"\"})", "legendFormat": "{{pod}}", "refId": "A" }]
+        },
+        {
+          "id": 4, "type": "timeseries", "title": "Container CPU (sre-copilot ns)",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+          "datasource": { "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "short" } },
+          "targets": [{ "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"sre-copilot\", container!=\"\"}[5m]))", "legendFormat": "{{pod}}", "refId": "A" }]
+        },
+        {
+          "id": 5, "type": "timeseries", "title": "Observability Stack Memory",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+          "datasource": { "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "bytes" } },
+          "targets": [{ "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"observability\", container!=\"\"})", "legendFormat": "{{pod}}", "refId": "A" }]
+        },
+        {
+          "id": 6, "type": "timeseries", "title": "Pod Restarts (1h)",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+          "datasource": { "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "short" } },
+          "targets": [{ "expr": "increase(kube_pod_container_status_restarts_total{namespace=~\"sre-copilot|platform|observability\"}[1h])", "legendFormat": "{{pod}}/{{container}}", "refId": "A" }]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-cost-capacity
+  namespace: observability
+  labels:
+    grafana_dashboard: "1"
+  annotations:
+    grafana_folder: "SRE Copilot"
+data:
+  cost-capacity.json: |-
+    {
+      "title": "Cost and Capacity",
+      "uid": "cost-capacity",
+      "schemaVersion": 36,
+      "refresh": "60s",
+      "time": { "from": "now-6h", "to": "now" },
+      "panels": [
+        {
+          "id": 1, "type": "stat", "title": "Memory Requested (all namespaces)",
+          "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+          "datasource": { "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "bytes" } },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+          "targets": [{ "expr": "sum(kube_pod_container_resource_requests{resource=\"memory\", namespace=~\"sre-copilot|platform|observability\"})", "legendFormat": "memory requested", "refId": "A" }]
+        },
+        {
+          "id": 2, "type": "stat", "title": "CPU Cores Requested",
+          "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+          "datasource": { "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "short" } },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+          "targets": [{ "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\", namespace=~\"sre-copilot|platform|observability\"})", "legendFormat": "CPU cores", "refId": "A" }]
+        },
+        {
+          "id": 3, "type": "stat", "title": "Input Tokens (6h)",
+          "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+          "datasource": { "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "short" } },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+          "targets": [{ "expr": "increase(llm_tokens_input_total[6h])", "legendFormat": "input tokens", "refId": "A" }]
+        },
+        {
+          "id": 4, "type": "stat", "title": "Output Tokens (6h)",
+          "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+          "datasource": { "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "short" } },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+          "targets": [{ "expr": "increase(llm_tokens_output_total[6h])", "legendFormat": "output tokens", "refId": "A" }]
+        },
+        {
+          "id": 5, "type": "timeseries", "title": "Memory by Namespace",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+          "datasource": { "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "bytes" } },
+          "targets": [{ "expr": "sum by (namespace) (container_memory_working_set_bytes{namespace=~\"sre-copilot|platform|observability\", container!=\"\"})", "legendFormat": "{{namespace}}", "refId": "A" }]
+        },
+        {
+          "id": 6, "type": "timeseries", "title": "CPU by Namespace",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+          "datasource": { "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "short" } },
+          "targets": [{ "expr": "sum by (namespace) (rate(container_cpu_usage_seconds_total{namespace=~\"sre-copilot|platform|observability\", container!=\"\"}[5m]))", "legendFormat": "{{namespace}}", "refId": "A" }]
+        }
+      ]
+    }

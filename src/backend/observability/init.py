@@ -39,5 +39,9 @@ def init_otel(app) -> None:
     )
     metrics.set_meter_provider(mp)
 
-    FastAPIInstrumentor.instrument_app(app, excluded_urls="/healthz,/metrics")
+    FastAPIInstrumentor.instrument_app(
+        app,
+        excluded_urls="/healthz,/metrics",
+        http_capture_headers_server_request=["traceparent", "x-request-id"],
+    )
     HTTPXClientInstrumentor().instrument()

@@ -3,6 +3,12 @@ repositories:
     url: https://traefik.github.io/charts
   - name: sealed-secrets
     url: https://bitnami-labs.github.io/sealed-secrets
+  - name: grafana
+    url: https://grafana.github.io/helm-charts
+  - name: open-telemetry
+    url: https://open-telemetry.github.io/opentelemetry-helm-charts
+  - name: prometheus-community
+    url: https://prometheus-community.github.io/helm-charts
 
 environments:
   local:
@@ -27,6 +33,56 @@ releases:
       - helm/platform/sealed-secrets/values.yaml
     needs:
       - platform/traefik
+
+  # --- observability (wave 1) ---
+  - name: loki
+    namespace: observability
+    chart: grafana/loki
+    version: "~6.0"
+    values:
+      - helm/observability/lgtm/loki-values.yaml
+    needs:
+      - platform/traefik
+
+  - name: tempo
+    namespace: observability
+    chart: grafana/tempo
+    version: "~1.0"
+    values:
+      - helm/observability/lgtm/tempo-values.yaml
+    needs:
+      - platform/traefik
+
+  - name: prometheus
+    namespace: observability
+    chart: prometheus-community/prometheus
+    version: "~25.0"
+    values:
+      - helm/observability/lgtm/prometheus-values.yaml
+    needs:
+      - platform/traefik
+
+  - name: grafana
+    namespace: observability
+    chart: grafana/grafana
+    version: "~8.0"
+    values:
+      - helm/observability/lgtm/grafana-values.yaml
+    needs:
+      - observability/loki
+      - observability/tempo
+      - observability/prometheus
+
+  - name: otel-collector
+    namespace: observability
+    chart: open-telemetry/opentelemetry-collector
+    version: "~0.108"
+    values:
+      - helm/observability/otel-collector/values.yaml
+    needs:
+      - observability/loki
+      - observability/tempo
+      - observability/prometheus
 
   # --- networking (wave 1) ---
   - name: networkpolicies
@@ -56,8 +112,11 @@ releases:
         value: {{ env "LLM_MODEL" | default "qwen2.5:7b-instruct-q4_K_M" }}
       - name: llm.judgeModel
         value: {{ env "LLM_JUDGE_MODEL" | default "llama3.1:8b-instruct-q4_K_M" }}
+      - name: env.OTEL_EXPORTER_OTLP_ENDPOINT
+        value: {{ env "OTEL_EXPORTER_OTLP_ENDPOINT" | default "http://otel-collector.observability.svc.cluster.local:4317" }}
     needs:
       - sre-copilot/ollama-externalname
+      - observability/otel-collector
 
   - name: frontend
     namespace: sre-copilot

@@ -15,7 +15,18 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.462.0",
-    "tailwind-merge": "^2.5.4"
+    "tailwind-merge": "^2.5.4",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/core": "^1.29.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.56.0",
+    "@opentelemetry/instrumentation": "^0.56.0",
+    "@opentelemetry/instrumentation-document-load": "^0.42.0",
+    "@opentelemetry/instrumentation-fetch": "^0.56.0",
+    "@opentelemetry/resources": "^1.29.0",
+    "@opentelemetry/sdk-trace-base": "^1.29.0",
+    "@opentelemetry/sdk-trace-web": "^1.29.0",
+    "@opentelemetry/semantic-conventions": "^1.29.0",
+    "web-vitals": "^4.2.4"
   },
   "devDependencies": {
     "@types/node": "^20.17.6",

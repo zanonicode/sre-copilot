@@ -1,0 +1,58 @@
+tempo:
+  reportingEnabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  storage:
+    trace:
+      backend: local
+      local:
+        path: /var/tempo/traces
+      wal:
+        path: /var/tempo/wal
+
+  retention: 24h
+
+  server:
+    http_listen_port: 3200
+    grpc_listen_port: 9095
+
+  distributor:
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+
+  ingester:
+    trace_idle_period: 10s
+    max_block_duration: 5m
+
+  compactor:
+    compaction:
+      block_retention: 24h
+
+  querier:
+    frontend_worker:
+      frontend_address: localhost:9095
+
+  metrics_generator:
+    enabled: false
+
+persistence:
+  enabled: false
+
+serviceMonitor:
+  enabled: true
+  additionalLabels:
+    release: prometheus
+
+tempoQuery:
+  enabled: false

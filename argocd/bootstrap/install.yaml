@@ -1,0 +1,14 @@
+# ArgoCD install manifest — generated from upstream
+# To refresh: kubectl create namespace argocd --dry-run=client -o yaml
+# and: curl -sL https://raw.githubusercontent.com/argoproj/argo-cd/v2.12.0/manifests/install.yaml
+#
+# For the SRE Copilot kind cluster we apply the standard install.yaml then overlay
+# the root Application below.  The `make up` target handles the install order:
+#   1. kubectl apply -k argocd/bootstrap/
+#   2. kubectl rollout status -n argocd deploy/argocd-server
+#   3. kubectl apply -f argocd/bootstrap/root-app.yaml
+#
+# This file is a namespace + remote-URL kustomization entry point so `argocd/bootstrap/`
+# can be applied as a single `kubectl apply -k` invocation.
+#
+# See: argocd/bootstrap/kustomization.yaml

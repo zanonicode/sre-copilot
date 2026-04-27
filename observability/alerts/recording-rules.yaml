@@ -1,0 +1,130 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: backend-slo-recordings
+  namespace: observability
+  labels:
+    release: prometheus
+spec:
+  groups:
+    - name: backend.slo.recordings
+      interval: 30s
+      rules:
+        # Availability: error ratio over multiple windows
+        - record: backend:availability:error_ratio_5m
+          expr: |
+            sum(rate(http_server_duration_count{
+                  service_name="sre-copilot-backend",
+                  http_status_code=~"5.."}[5m]))
+            /
+            sum(rate(http_server_duration_count{
+                  service_name="sre-copilot-backend"}[5m]))
+
+        - record: backend:availability:error_ratio_30m
+          expr: |
+            sum(rate(http_server_duration_count{
+                  service_name="sre-copilot-backend",
+                  http_status_code=~"5.."}[30m]))
+            /
+            sum(rate(http_server_duration_count{
+                  service_name="sre-copilot-backend"}[30m]))
+
+        - record: backend:availability:error_ratio_1h
+          expr: |
+            sum(rate(http_server_duration_count{
+                  service_name="sre-copilot-backend",
+                  http_status_code=~"5.."}[1h]))
+            /
+            sum(rate(http_server_duration_count{
+                  service_name="sre-copilot-backend"}[1h]))
+
+        - record: backend:availability:error_ratio_6h
+          expr: |
+            sum(rate(http_server_duration_count{
+                  service_name="sre-copilot-backend",
+                  http_status_code=~"5.."}[6h]))
+            /
+            sum(rate(http_server_duration_count{
+                  service_name="sre-copilot-backend"}[6h]))
+
+        # TTFT bad-events ratio (>2s = bad request vs 95% SLO = 5% budget)
+        - record: backend:ttft:bad_ratio_5m
+          expr: |
+            (
+              sum(rate(llm_ttft_seconds_count[5m]))
+              -
+              sum(rate(llm_ttft_seconds_bucket{le="2.0"}[5m]))
+            )
+            /
+            sum(rate(llm_ttft_seconds_count[5m]))
+
+        - record: backend:ttft:bad_ratio_30m
+          expr: |
+            (
+              sum(rate(llm_ttft_seconds_count[30m]))
+              -
+              sum(rate(llm_ttft_seconds_bucket{le="2.0"}[30m]))
+            )
+            /
+            sum(rate(llm_ttft_seconds_count[30m]))
+
+        - record: backend:ttft:bad_ratio_1h
+          expr: |
+            (
+              sum(rate(llm_ttft_seconds_count[1h]))
+              -
+              sum(rate(llm_ttft_seconds_bucket{le="2.0"}[1h]))
+            )
+            /
+            sum(rate(llm_ttft_seconds_count[1h]))
+
+        - record: backend:ttft:bad_ratio_6h
+          expr: |
+            (
+              sum(rate(llm_ttft_seconds_count[6h]))
+              -
+              sum(rate(llm_ttft_seconds_bucket{le="2.0"}[6h]))
+            )
+            /
+            sum(rate(llm_ttft_seconds_count[6h]))
+
+        # Full-response bad-events ratio (>30s = bad request vs 90% SLO = 10% budget)
+        - record: backend:response:bad_ratio_5m
+          expr: |
+            (
+              sum(rate(llm_response_seconds_count[5m]))
+              -
+              sum(rate(llm_response_seconds_bucket{le="30.0"}[5m]))
+            )
+            /
+            sum(rate(llm_response_seconds_count[5m]))
+
+        - record: backend:response:bad_ratio_30m
+          expr: |
+            (
+              sum(rate(llm_response_seconds_count[30m]))
+              -
+              sum(rate(llm_response_seconds_bucket{le="30.0"}[30m]))
+            )
+            /
+            sum(rate(llm_response_seconds_count[30m]))
+
+        - record: backend:response:bad_ratio_1h
+          expr: |
+            (
+              sum(rate(llm_response_seconds_count[1h]))
+              -
+              sum(rate(llm_response_seconds_bucket{le="30.0"}[1h]))
+            )
+            /
+            sum(rate(llm_response_seconds_count[1h]))
+
+        - record: backend:response:bad_ratio_6h
+          expr: |
+            (
+              sum(rate(llm_response_seconds_count[6h]))
+              -
+              sum(rate(llm_response_seconds_bucket{le="30.0"}[6h]))
+            )
+            /
+            sum(rate(llm_response_seconds_count[6h]))

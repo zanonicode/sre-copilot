@@ -1,0 +1,157 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: backend-slo-alerts
+  namespace: observability
+  labels:
+    release: prometheus
+spec:
+  groups:
+    # =========================================================================
+    # SLO 1: AVAILABILITY — 99% / 7d
+    # Error budget = 1 - 0.99 = 0.01
+    # Fast page  → 14.4 × 0.01 = 14.4% over 1h confirmed by 5m
+    # Slow ticket →  6   × 0.01 =  6%   over 6h confirmed by 30m
+    # =========================================================================
+    - name: backend.availability.alerts
+      rules:
+        - alert: BackendAvailabilityBurnFast
+          expr: |
+            backend:availability:error_ratio_1h > (14.4 * 0.01)
+            and
+            backend:availability:error_ratio_5m > (14.4 * 0.01)
+          for: 2m
+          labels:
+            severity: page
+            slo: availability
+            burn: fast
+          annotations:
+            summary: "Backend burning availability budget fast (>14.4x over 1h)"
+            description: "5xx error ratio > 14.4% sustained across 1h and 5m windows. Will exhaust 30d error budget within 2 days. Check backend pods and Ollama connectivity."
+            runbook_url: "https://github.com/zanonicode/sre-copilot/blob/main/docs/runbooks/backend-pod-loss.md"
+
+        - alert: BackendAvailabilityBurnSlow
+          expr: |
+            backend:availability:error_ratio_6h > (6 * 0.01)
+            and
+            backend:availability:error_ratio_30m > (6 * 0.01)
+          for: 15m
+          labels:
+            severity: page
+            slo: availability
+            burn: slow
+          annotations:
+            summary: "Backend burning availability budget slowly (>6x over 6h)"
+            description: "5xx error ratio > 6% sustained across 6h and 30m windows. Will exhaust 30d error budget within ~5 days."
+            runbook_url: "https://github.com/zanonicode/sre-copilot/blob/main/docs/runbooks/backend-pod-loss.md"
+
+    # =========================================================================
+    # SLO 2: TTFT — p95 < 2s / 7d
+    # Bad-event budget = 1 - 0.95 = 0.05
+    # Fast page  → 14.4 × 0.05 = 72% bad over 1h confirmed by 5m
+    # Slow ticket →  6   × 0.05 = 30% bad over 6h confirmed by 30m
+    # =========================================================================
+    - name: backend.ttft.alerts
+      rules:
+        - alert: BackendTTFTBurnFast
+          expr: |
+            backend:ttft:bad_ratio_1h > (14.4 * 0.05)
+            and
+            backend:ttft:bad_ratio_5m > (14.4 * 0.05)
+          for: 2m
+          labels:
+            severity: page
+            slo: ttft
+            burn: fast
+          annotations:
+            summary: "TTFT >2s for >72% of requests over 1h (14.4x burn)"
+            description: "Likely Ollama model swap, host RAM pressure, or thermal throttle. Check ollama process on host; inspect ollama.host_call spans in Tempo."
+            runbook_url: "https://github.com/zanonicode/sre-copilot/blob/main/docs/runbooks/ollama-host-down.md"
+
+        - alert: BackendTTFTBurnSlow
+          expr: |
+            backend:ttft:bad_ratio_6h > (6 * 0.05)
+            and
+            backend:ttft:bad_ratio_30m > (6 * 0.05)
+          for: 15m
+          labels:
+            severity: page
+            slo: ttft
+            burn: slow
+          annotations:
+            summary: "TTFT >2s for >30% of requests over 6h (6x burn)"
+            description: "Sustained latency degradation. Review Tempo trace for ollama.inference synthetic span durations."
+            runbook_url: "https://github.com/zanonicode/sre-copilot/blob/main/docs/runbooks/ollama-host-down.md"
+
+    # =========================================================================
+    # SLO 3: FULL RESPONSE — p90 < 30s / 7d
+    # Bad-event budget = 1 - 0.90 = 0.10
+    # Fast page  → 14.4 × 0.10 = 144% (capped at 100%) — use 6x for single-window
+    # Slow ticket →  6   × 0.10 = 60%  bad over 6h confirmed by 30m
+    # =========================================================================
+    - name: backend.response.alerts
+      rules:
+        - alert: BackendResponseBurnFast
+          expr: |
+            backend:response:bad_ratio_1h > (14.4 * 0.10)
+            and
+            backend:response:bad_ratio_5m > (14.4 * 0.10)
+          for: 2m
+          labels:
+            severity: page
+            slo: full_response
+            burn: fast
+          annotations:
+            summary: "Full-response >30s for >100% (clamped) of requests over 1h"
+            description: "Extreme latency — Ollama likely overloaded or swapped out of memory. Check `ollama ps` on host."
+            runbook_url: "https://github.com/zanonicode/sre-copilot/blob/main/docs/runbooks/ollama-host-down.md"
+
+        - alert: BackendResponseBurnSlow
+          expr: |
+            backend:response:bad_ratio_6h > (6 * 0.10)
+            and
+            backend:response:bad_ratio_30m > (6 * 0.10)
+          for: 15m
+          labels:
+            severity: page
+            slo: full_response
+            burn: slow
+          annotations:
+            summary: "Full-response >30s for >60% of requests over 6h (6x burn)"
+            description: "Sustained token-generation slowdown. Check Tempo ollama.inference span durations and host memory pressure."
+            runbook_url: "https://github.com/zanonicode/sre-copilot/blob/main/docs/runbooks/ollama-host-down.md"
+
+    # =========================================================================
+    # Pod-level support alerts
+    # =========================================================================
+    - name: backend.pods
+      rules:
+        - alert: BackendPodCrashLoop
+          expr: |
+            rate(kube_pod_container_status_restarts_total{pod=~"backend-.*"}[10m]) > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Backend pod {{ $labels.pod }} is restarting"
+            description: "Container {{ $labels.container }} in pod {{ $labels.pod }} has restarted. Check logs: kubectl logs {{ $labels.pod }} -n sre-copilot"
+
+        - alert: BackendNoReplicas
+          expr: |
+            kube_deployment_status_replicas_available{deployment="backend"} == 0
+          for: 1m
+          labels:
+            severity: page
+          annotations:
+            summary: "Backend has zero available replicas"
+            description: "All backend pods are down. Service is completely unavailable. PDB may have failed or all pods crashed simultaneously."
+
+        - alert: OtelCollectorDown
+          expr: |
+            up{job="otel-collector"} == 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "OTel collector is down — telemetry pipeline broken"
+            description: "All traces and metrics from backend will be dropped until collector recovers."

@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ollama-externalname
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/zanonicode/sre-copilot
+    targetRevision: main
+    path: helm/platform/ollama-externalname
+    helm:
+      valueFiles:
+        - values.yaml
+      releaseName: ollama-externalname
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: sre-copilot
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
