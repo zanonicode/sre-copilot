@@ -17,7 +17,7 @@ LLM_JUDGE_MODEL ?= llama3.1:8b-instruct-q4_K_M
 INGRESS_HOST    ?= sre-copilot.localtest.me
 export LLM_MODEL LLM_JUDGE_MODEL INGRESS_HOST
 
-.PHONY: help up down seed-models demo demo-canary demo-reset smoke lint test seal detect-bridge judge
+.PHONY: help up down seed-models demo demo-canary demo-reset smoke lint test seal detect-bridge judge restart-backend clean-replicasets trust-certs dashboards
 
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -218,6 +218,19 @@ trust-certs: ## Install mkcert local CA + mint wildcard cert for *.localtest.me,
 	@echo ""
 	@echo "==> [trust-certs] Done. Restart your browser to pick up the new CA."
 	@echo "    Verify:  curl -v https://api.sre-copilot.localtest.me/healthz  (no -k needed!)"
+
+dashboards: ## Regenerate Grafana ConfigMaps from observability/dashboards/*.json and apply to cluster
+	@echo "==> [dashboards] Regenerating ConfigMaps from JSON source of truth..."
+	python3 observability/dashboards/regen-configmaps.py
+	@echo "==> [dashboards] Applying to cluster (Grafana sidecar reloads within ~30s)..."
+	@# server-side apply to silence the 'missing last-applied-configuration'
+	@# warnings and to keep the ConfigMaps owned by an immutable field manager
+	@# regardless of who originally created them.
+	$(KUBECTL) apply --server-side --force-conflicts \
+	     --field-manager=sre-copilot-dashboards \
+	     -f observability/dashboards/configmaps.yaml
+	@echo "==> [dashboards] Done. Hard-refresh Grafana (Cmd-Shift-R) to see updates."
+	@echo "    URL: https://grafana.$(INGRESS_HOST)"
 
 smoke: ## Run end-to-end smoke tests (healthz + SSE + ingress + Ollama + memory + NP egress)
 	@$(KUBECTL) port-forward -n sre-copilot svc/backend 8000:8000 > /tmp/sre-smoke-pf.log 2>&1 & \
