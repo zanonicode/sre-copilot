@@ -38,7 +38,9 @@ singleBinary:
       cpu: 500m
       memory: 512Mi
   persistence:
-    enabled: false
+    enabled: true
+    size: 1Gi
+    storageClass: standard
 
 backend:
   replicas: 0

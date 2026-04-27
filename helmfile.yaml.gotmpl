@@ -34,6 +34,14 @@ releases:
     needs:
       - platform/traefik
 
+  # --- observability CRDs (wave 0.5 — must precede ServiceMonitor consumers) ---
+  - name: prometheus-operator-crds
+    namespace: observability
+    chart: prometheus-community/prometheus-operator-crds
+    version: "~14.0"
+    needs:
+      - platform/traefik
+
   # --- observability (wave 1) ---
   - name: loki
     namespace: observability
