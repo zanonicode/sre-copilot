@@ -25,6 +25,9 @@ prometheus-node-exporter:
     limits:
       cpu: 200m
       memory: 64Mi
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9100"
 
 kube-state-metrics:
   enabled: true
@@ -35,6 +38,9 @@ kube-state-metrics:
     limits:
       cpu: 200m
       memory: 128Mi
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
 
 pushgateway:
   enabled: false
@@ -63,3 +69,29 @@ serverFiles:
             regex: ([^:]+)(?::\d+)?;(\d+)
             replacement: $1:$2
             target_label: __address__
+
+      # Scrape kubelet's cAdvisor endpoint on each node for container_* metrics
+      # (CPU/memory/network per pod-container). Uses the apiserver as a TLS proxy
+      # to avoid kubelet TLS cert hassle in kind.
+      - job_name: kubernetes-cadvisor
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          insecure_skip_verify: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        kubernetes_sd_configs:
+          - role: node
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+          - target_label: __address__
+            replacement: kubernetes.default.svc:443
+          - source_labels: [__meta_kubernetes_node_name]
+            regex: (.+)
+            target_label: __metrics_path__
+            replacement: /api/v1/nodes/$1/proxy/metrics/cadvisor
+        metric_relabel_configs:
+          # Drop high-cardinality label that bloats series count
+          - source_labels: [id]
+            regex: '/system.slice/.*'
+            action: drop
