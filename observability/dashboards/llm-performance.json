@@ -157,18 +157,101 @@
     },
     {
       "id": 7,
-      "type": "logs",
-      "title": "Recent LLM Traces (via Loki, click traceid to open in Tempo)",
-      "description": "Backend log lines for /analyze/* and /generate/* endpoints with trace context. Each traceid value is a clickable link to Tempo via Loki's derivedFields. Loki + Tempo correlation without needing TraceQL backend search.",
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 12 },
+      "type": "table",
+      "title": "Recent LLM Traces — click traceid to open in Tempo",
+      "description": "Backend requests to /analyze/* and /generate/* endpoints. Each traceid is a direct link to the trace in Tempo Explore. Filtered to event=http.request so each request appears once.",
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 12 },
       "datasource": { "uid": "loki" },
-      "options": { "showTime": true, "sortOrder": "Descending", "dedupStrategy": "none", "wrapLogMessage": true, "prettifyLogMessage": false, "enableLogDetails": true, "showLabels": false, "showCommonLabels": false },
       "targets": [
         {
-          "expr": "{service_name=\"sre-copilot-backend\"} |~ \"/analyze/|/generate/\"",
+          "expr": "{service_name=\"sre-copilot-backend\"} | json | attributes_event=\"http.request\" | attributes_endpoint=~\"/analyze/.*|/generate/.*\" | line_format \"\"",
           "refId": "A"
         }
-      ]
+      ],
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "source": "labels",
+            "format": "auto",
+            "keepLabels": false
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "labels": true,
+              "tsNs": true,
+              "id": true,
+              "Line": true,
+              "service_name": true,
+              "job": true,
+              "deployment_environment": true,
+              "level": true,
+              "detected_level": true,
+              "instrumentation_scope_name": true,
+              "resources_service_version": true,
+              "resources_telemetry_sdk_language": true,
+              "resources_telemetry_sdk_name": true,
+              "resources_telemetry_sdk_version": true,
+              "attributes_code_filepath": true,
+              "attributes_code_function": true,
+              "attributes_code_lineno": true,
+              "attributes_event": true,
+              "attributes_status_code": true,
+              "body": true,
+              "severity": true,
+              "flags": true,
+              "spanid": true
+            },
+            "indexByName": {
+              "Time": 0,
+              "attributes_method": 1,
+              "attributes_endpoint": 2,
+              "traceid": 3,
+              "attributes_request_id": 4
+            },
+            "renameByName": {
+              "attributes_method": "Method",
+              "attributes_endpoint": "Endpoint",
+              "traceid": "Trace ID",
+              "attributes_request_id": "Request ID"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto", "filterable": true }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Trace ID" },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open trace in Tempo",
+                    "url": "/explore?left=%7B%22datasource%22:%22tempo%22,%22queries%22:%5B%7B%22query%22:%22${__value.raw}%22,%22queryType%22:%22traceId%22%7D%5D,%22range%22:%7B%22from%22:%22now-1h%22,%22to%22:%22now%22%7D%7D",
+                    "targetBlank": false
+                  }
+                ]
+              },
+              { "id": "custom.width", "value": 320 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Endpoint" },
+            "properties": [{ "id": "custom.width", "value": 220 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Method" },
+            "properties": [{ "id": "custom.width", "value": 80 }]
+          }
+        ]
+      }
     }
   ]
 }
