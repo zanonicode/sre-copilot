@@ -109,13 +109,11 @@ jobs:
           echo "$LOG" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
 
-      - name: Create GitHub Release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create or update GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
-          release_name: "SRE Copilot ${{ steps.tag.outputs.tag }}"
+          name: "SRE Copilot ${{ steps.tag.outputs.tag }}"
           body: |
             ## SRE Copilot ${{ steps.tag.outputs.tag }}
 
@@ -130,3 +128,6 @@ jobs:
             One-shot `trivy image` scan run against both images — results in CI artifacts.
           draft: false
           prerelease: false
+          # softprops/action-gh-release is idempotent: creates the release if
+          # it doesn't exist, updates it if it does. Replaces actions/create-release@v1
+          # which is deprecated and fails on already_exists.
