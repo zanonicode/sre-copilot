@@ -135,28 +135,50 @@ Other reference docs: [docs/adr/](docs/adr/) (architecture decisions), [docs/run
 
 ```
 sre-copilot/
-├── src/backend/          # FastAPI app — analyze, postmortem, admin, observability
-├── src/frontend/         # Next.js 14 SPA — analyzer + postmortem pages, browser OTel
-├── helm/                 # Project-local Helm charts (backend, frontend, ollama-externalname, ...)
-├── helmfile.yaml.gotmpl  # Helmfile orchestration of all releases
+├── src/
+│   ├── backend/             # FastAPI app — api/, admin/, schemas/, prompts/,
+│   │                        #   observability/, middleware/, chunking/
+│   └── frontend/            # Next.js 14 SPA — app/, components/, lib/sse.ts,
+│                            #   observability/ (browser OTel)
+├── helm/                    # Project-local Helm charts (backend, frontend,
+│                            #   ollama-externalname, networkpolicies, …)
+├── helmfile.yaml.gotmpl     # Helmfile orchestration of 12 releases (Go-templated
+│                            #   per-machine env values)
 ├── argocd/
-│   ├── bootstrap/        # root-app.yaml — the app-of-apps entry point
-│   └── applications/     # 13 child Applications (one per workload)
-├── terraform/local/      # kind cluster definition (Terraform-managed)
+│   ├── bootstrap/           # root-app.yaml — the app-of-apps entry point
+│   └── applications/        # 14 child Applications (one per workload)
+├── terraform/local/         # kind cluster definition (Terraform-managed,
+│                            #   kubeconfig → ~/.kube/sre-copilot.config)
 ├── observability/
-│   ├── dashboards/       # Grafana dashboard JSONs (overview, llm-perf, cluster, cost)
-│   └── alerts/           # PrometheusRules — SLO recording + MWMBR alerts
+│   ├── dashboards/          # 4 Grafana dashboard JSONs (overview, llm-perf,
+│   │                        #   cluster, cost) + regen-configmaps.py
+│   ├── alerts/              # PrometheusRules — SLO recording + MWMBR alerts
+│   ├── ingressroutes.yaml   # Traefik IngressRoutes for grafana, prometheus,
+│   │                        #   argocd
+│   └── kustomization.yaml   # Kustomize entry that aggregates the above
 ├── tests/
-│   ├── backend/          # pytest unit tests
-│   ├── integration/      # in-cluster integration tests
-│   ├── smoke/            # end-to-end smoke probes (SSE round-trip, ingress, Ollama)
-│   └── eval/             # Layer-1 structural + Layer-2 LLM-judge eval datasets
-├── docs/                 # This README's deep-dive companions
+│   ├── backend/             # pytest unit tests
+│   ├── integration/         # in-cluster integration tests
+│   ├── smoke/               # end-to-end smoke probes (SSE round-trip, ingress, Ollama)
+│   └── eval/                # Layer-1 structural eval harness
+├── datasets/
+│   ├── eval/                # Golden labels + LLM-judge fixtures (Layer-2 eval)
+│   └── loghub/              # Loghub log samples used as analyzer test inputs
+├── deploy/
+│   └── secrets/             # Sealed Secret manifests (committed encrypted blobs)
+├── docs/                    # README's deep-dive companions: DEPLOYMENT, APP_GUIDE,
+│                            #   INFRASTRUCTURE, OBSERVABILITY + adr/, runbooks/, eval/
+├── notes/                   # Free-form planning notes (project plan, scratch)
 ├── .claude/
-│   ├── sdd/              # Brainstorm / Define / Design / Build artifacts
-│   └── kb/               # Knowledge bases consumed by claude-code subagents
-├── Makefile              # Bootstrap, demo, lint, test, judge, seal, trust-certs
-└── Tiltfile              # Inner-dev-loop live-reload (alternative to make up)
+│   ├── sdd/                 # Brainstorm / Define / Design / Build / Ship artifacts
+│   ├── kb/                  # Knowledge bases consumed by claude-code subagents
+│   ├── agents/              # 18 specialized agents used during the build
+│   └── commands/            # Slash commands (/workflow:brainstorm, /build, …)
+├── .github/workflows/       # CI (ci.yml), nightly eval, release pipeline
+├── Makefile                 # Bootstrap, demo, lint, test, judge, seal, trust-certs
+├── Tiltfile                 # Inner-dev-loop live-reload (alternative to make up)
+├── pyproject.toml           # Python package + ruff/mypy/pytest config
+└── LICENSE                  # Apache 2.0
 ```
 
 ## Status
