@@ -69,6 +69,9 @@ The `make up` recipe is sensitive to a known race: `argocd-repo-server` gRPC lis
 ### File-reference style in docs
 Use markdown links `[text](path)` or `[file.py:42](path/file.py#L42)`. **Don't** use `` `Makefile:53` `` backticks — they're not clickable in the user's IDE (VS Code Claude Code extension renders relative-path links).
 
+### `/workflow:ship` — preserve working files (project-specific override)
+The canonical `/workflow:ship` recipe deletes DEFINE/DESIGN/BUILD_REPORT working files from `.claude/sdd/features/` and `.claude/sdd/reports/` after archiving. **For this repo, do NOT delete them.** This project is a reference implementation of SDD-with-Claude-Code; visitors browsing `.claude/sdd/features/` should see live artifacts, not empty folders. The archive at `.claude/sdd/archive/{FEATURE}/` is the canonical historical record with `Status: ✅ Shipped`; the working files are the educational mirror.
+
 ## File layout
 
 ```
