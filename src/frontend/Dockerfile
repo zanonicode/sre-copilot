@@ -1,7 +1,10 @@
 FROM node:20-slim AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev
+# Build needs devDependencies (typescript, tailwindcss, @types/*) for Next.js
+# to resolve tsconfig path aliases and compile TS. Standalone output excludes
+# node_modules from the runner image, so dev deps don't bloat the final image.
+RUN npm ci
 
 
 FROM node:20-slim AS builder
