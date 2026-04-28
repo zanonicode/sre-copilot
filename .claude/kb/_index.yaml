@@ -1,0 +1,897 @@
+# Knowledge Base Index
+# Machine-readable registry for KB domains
+#
+# ============================================================================
+# DEPRECATION NOTICE (2026-04-23)
+# ============================================================================
+# The KB domains registered below (pydantic, gemini, langfuse, terraform,
+# terragrunt, crewai, openrouter, gcp, ansible, ansible-roles) were authored
+# for a PRIOR invoice-processing pipeline project and are LEGACY.
+#
+# The CURRENT project is "DevOps Wiki — Unified Search Platform" — a
+# federated-search web app over Azure DevOps Wiki + MediaWiki + Discourse.
+# See ../../README.md and ../CLAUDE.md.
+#
+# DO NOT reference these KBs when planning DevOps Wiki features.
+# New KBs needed (not yet created):
+#   - azure-devops-wiki, mediawiki-api, discourse-api, markdown-search,
+#     microsoft-sso, aws-serverless-web, react-search-ui
+# See ../CLAUDE.md "Knowledge Base Status" section for rationale.
+# ============================================================================
+
+version: "1.0"
+last_updated: "2026-04-23"
+status: legacy_invoice_pipeline
+current_project: devops-wiki-ui
+
+# File Size Limits (SINGLE SOURCE OF TRUTH)
+# Raised from 150/200 → 250/250 on 2026-04-27: code-simplifier domain
+# revealed that some genuinely complex topics (landmines, idempotent
+# make-targets, conditional-helm-templates) need depth and don't split
+# cleanly into atomic 150-line sub-files without losing the through-line.
+# 250 is still tight enough to discourage rambling; raises the floor for
+# the legitimately complex cases without inviting bloat across the board.
+limits:
+  quick_reference: 100
+  concept: 250
+  pattern: 250
+  spec: null
+  reference: null
+
+# Templates
+templates:
+  - name: concept
+    path: _templates/concept.md.template
+  - name: pattern
+    path: _templates/pattern.md.template
+  - name: index
+    path: _templates/index.md.template
+  - name: quick-reference
+    path: _templates/quick-reference.md.template
+  - name: spec
+    path: _templates/spec.yaml.template
+  - name: test-case
+    path: _templates/test-case.json.template
+  - name: domain-manifest
+    path: _templates/domain-manifest.yaml.template
+
+# Domain Registry
+domains:
+  pydantic:
+    name: Pydantic
+    description: Python data validation for LLM output parsing and structured extraction
+    path: pydantic/
+    mcp_validated: "2026-01-25"
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: base-model
+        path: concepts/base-model.md
+        confidence: 0.95
+      - name: field-types
+        path: concepts/field-types.md
+        confidence: 0.95
+      - name: validators
+        path: concepts/validators.md
+        confidence: 0.95
+      - name: nested-models
+        path: concepts/nested-models.md
+        confidence: 0.95
+    patterns:
+      - name: llm-output-validation
+        path: patterns/llm-output-validation.md
+      - name: extraction-schema
+        path: patterns/extraction-schema.md
+      - name: error-handling
+        path: patterns/error-handling.md
+      - name: custom-validators
+        path: patterns/custom-validators.md
+    specs:
+      - name: invoice-schema
+        path: specs/invoice-schema.yaml
+
+  gcp:
+    name: GCP Serverless Data Engineering
+    description: Google Cloud Platform serverless services for event-driven data pipelines
+    path: gcp/
+    mcp_validated: "2026-01-25"
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: cloud-run
+        path: concepts/cloud-run.md
+        confidence: 0.95
+      - name: pubsub
+        path: concepts/pubsub.md
+        confidence: 0.95
+      - name: gcs
+        path: concepts/gcs.md
+        confidence: 0.95
+      - name: bigquery
+        path: concepts/bigquery.md
+        confidence: 0.95
+      - name: iam
+        path: concepts/iam.md
+        confidence: 0.95
+      - name: secret-manager
+        path: concepts/secret-manager.md
+        confidence: 0.95
+    patterns:
+      - name: event-driven-pipeline
+        path: patterns/event-driven-pipeline.md
+      - name: multi-bucket-pipeline
+        path: patterns/multi-bucket-pipeline.md
+      - name: pubsub-fanout
+        path: patterns/pubsub-fanout.md
+      - name: cloud-run-scaling
+        path: patterns/cloud-run-scaling.md
+      - name: gcs-triggered-workflow
+        path: patterns/gcs-triggered-workflow.md
+
+  gemini:
+    name: Gemini
+    description: Google's multimodal LLM for document extraction and vision tasks
+    path: gemini/
+    mcp_validated: "2026-01-25"
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: model-capabilities
+        path: concepts/model-capabilities.md
+        confidence: 0.95
+      - name: vertex-ai-integration
+        path: concepts/vertex-ai-integration.md
+        confidence: 0.95
+      - name: multimodal-prompting
+        path: concepts/multimodal-prompting.md
+        confidence: 0.95
+      - name: token-limits-pricing
+        path: concepts/token-limits-pricing.md
+        confidence: 0.95
+      - name: structured-output
+        path: concepts/structured-output.md
+        confidence: 0.95
+      - name: safety-settings
+        path: concepts/safety-settings.md
+        confidence: 0.95
+    patterns:
+      - name: invoice-extraction
+        path: patterns/invoice-extraction.md
+      - name: structured-json-output
+        path: patterns/structured-json-output.md
+      - name: openrouter-fallback
+        path: patterns/openrouter-fallback.md
+      - name: batch-processing
+        path: patterns/batch-processing.md
+      - name: error-handling-retries
+        path: patterns/error-handling-retries.md
+      - name: prompt-versioning
+        path: patterns/prompt-versioning.md
+
+  langfuse:
+    name: Langfuse
+    description: LLMOps observability platform for tracking LLM calls, costs, latency, and quality
+    path: langfuse/
+    mcp_validated: "2026-01-25"
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: traces-spans
+        path: concepts/traces-spans.md
+        confidence: 0.95
+      - name: generations
+        path: concepts/generations.md
+        confidence: 0.95
+      - name: cost-tracking
+        path: concepts/cost-tracking.md
+        confidence: 0.95
+      - name: scoring
+        path: concepts/scoring.md
+        confidence: 0.95
+      - name: prompt-management
+        path: concepts/prompt-management.md
+        confidence: 0.95
+      - name: model-comparison
+        path: concepts/model-comparison.md
+        confidence: 0.95
+    patterns:
+      - name: python-sdk-integration
+        path: patterns/python-sdk-integration.md
+      - name: cloud-run-instrumentation
+        path: patterns/cloud-run-instrumentation.md
+      - name: quality-feedback-loops
+        path: patterns/quality-feedback-loops.md
+      - name: cost-alerting
+        path: patterns/cost-alerting.md
+      - name: trace-linking
+        path: patterns/trace-linking.md
+      - name: dashboard-metrics
+        path: patterns/dashboard-metrics.md
+
+  terraform:
+    name: Terraform for GCP
+    description: Infrastructure as Code for GCP serverless architecture with module patterns
+    path: terraform/
+    mcp_validated: "2026-01-25"
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: resources
+        path: concepts/resources.md
+        confidence: 0.95
+      - name: modules
+        path: concepts/modules.md
+        confidence: 0.95
+      - name: providers
+        path: concepts/providers.md
+        confidence: 0.95
+      - name: state
+        path: concepts/state.md
+        confidence: 0.95
+      - name: variables
+        path: concepts/variables.md
+        confidence: 0.95
+      - name: workspaces
+        path: concepts/workspaces.md
+        confidence: 0.95
+    patterns:
+      - name: cloud-run-module
+        path: patterns/cloud-run-module.md
+      - name: pubsub-module
+        path: patterns/pubsub-module.md
+      - name: gcs-module
+        path: patterns/gcs-module.md
+      - name: bigquery-module
+        path: patterns/bigquery-module.md
+      - name: iam-module
+        path: patterns/iam-module.md
+      - name: remote-state
+        path: patterns/remote-state.md
+
+  terragrunt:
+    name: Terragrunt
+    description: Terraform wrapper for multi-environment orchestration, DRY configurations, and dependency management
+    path: terragrunt/
+    mcp_validated: "2026-01-25"
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: terragrunt-blocks
+        path: concepts/terragrunt-blocks.md
+        confidence: 0.95
+      - name: root-configuration
+        path: concepts/root-configuration.md
+        confidence: 0.95
+      - name: environment-hierarchy
+        path: concepts/environment-hierarchy.md
+        confidence: 0.95
+      - name: generate-blocks
+        path: concepts/generate-blocks.md
+        confidence: 0.95
+      - name: dependency-graphs
+        path: concepts/dependency-graphs.md
+        confidence: 0.95
+      - name: hooks
+        path: concepts/hooks.md
+        confidence: 0.95
+    patterns:
+      - name: multi-environment-config
+        path: patterns/multi-environment-config.md
+      - name: dry-hierarchies
+        path: patterns/dry-hierarchies.md
+      - name: dependency-management
+        path: patterns/dependency-management.md
+      - name: state-bucket-per-env
+        path: patterns/state-bucket-per-env.md
+      - name: environment-promotion
+        path: patterns/environment-promotion.md
+    specs:
+      - name: gcp-project-structure
+        path: specs/gcp-project-structure.yaml
+
+  crewai:
+    name: CrewAI
+    description: Multi-agent AI orchestration framework for autonomous DataOps monitoring and self-healing pipelines
+    path: crewai/
+    mcp_validated: "2026-01-25"
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: agents
+        path: concepts/agents.md
+        confidence: 0.95
+      - name: crews
+        path: concepts/crews.md
+        confidence: 0.95
+      - name: tasks
+        path: concepts/tasks.md
+        confidence: 0.95
+      - name: tools
+        path: concepts/tools.md
+        confidence: 0.95
+      - name: memory
+        path: concepts/memory.md
+        confidence: 0.95
+      - name: processes
+        path: concepts/processes.md
+        confidence: 0.95
+    patterns:
+      - name: triage-investigation-report
+        path: patterns/triage-investigation-report.md
+      - name: log-analysis-agent
+        path: patterns/log-analysis-agent.md
+      - name: escalation-workflow
+        path: patterns/escalation-workflow.md
+      - name: slack-integration
+        path: patterns/slack-integration.md
+      - name: circuit-breaker
+        path: patterns/circuit-breaker.md
+      - name: crew-coordination
+        path: patterns/crew-coordination.md
+
+  openrouter:
+    name: OpenRouter
+    description: Unified LLM API gateway providing access to 400+ AI models with automatic fallback, load balancing, and cost optimization
+    path: openrouter/
+    mcp_validated: "2026-01-28"
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: api-basics
+        path: concepts/api-basics.md
+        confidence: 0.95
+      - name: authentication
+        path: concepts/authentication.md
+        confidence: 0.95
+      - name: model-selection
+        path: concepts/model-selection.md
+        confidence: 0.95
+      - name: streaming
+        path: concepts/streaming.md
+        confidence: 0.95
+      - name: rate-limits
+        path: concepts/rate-limits.md
+        confidence: 0.95
+    patterns:
+      - name: python-sdk-integration
+        path: patterns/python-sdk-integration.md
+      - name: cost-optimization
+        path: patterns/cost-optimization.md
+      - name: error-handling
+        path: patterns/error-handling.md
+      - name: provider-routing
+        path: patterns/provider-routing.md
+      - name: langchain-integration
+        path: patterns/langchain-integration.md
+
+  ansible:
+    name: Ansible
+    description: Core Ansible concepts and patterns for infrastructure automation — inventory, playbooks, variables, modules, and secrets
+    path: ansible/
+    mcp_validated: "2026-04-21"
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: inventory
+        path: concepts/inventory.md
+        confidence: 0.95
+      - name: playbooks
+        path: concepts/playbooks.md
+        confidence: 0.95
+      - name: variables
+        path: concepts/variables.md
+        confidence: 0.95
+      - name: modules
+        path: concepts/modules.md
+        confidence: 0.95
+      - name: conditionals-loops
+        path: concepts/conditionals-loops.md
+        confidence: 0.95
+      - name: tags
+        path: concepts/tags.md
+        confidence: 0.95
+    patterns:
+      - name: idempotency
+        path: patterns/idempotency.md
+      - name: error-handling
+        path: patterns/error-handling.md
+      - name: jinja2-templating
+        path: patterns/jinja2-templating.md
+      - name: vault-secrets
+        path: patterns/vault-secrets.md
+    specs:
+      - name: ansible-spec
+        path: specs/ansible-spec.yaml
+
+  ansible-roles:
+    name: Ansible Roles
+    description: Ansible Roles structure, best practices, Galaxy registry, and Molecule testing patterns
+    path: ansible-roles/
+    mcp_validated: "2026-04-21"
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: role-structure
+        path: concepts/role-structure.md
+        confidence: 0.95
+      - name: role-dependencies
+        path: concepts/role-dependencies.md
+        confidence: 0.95
+      - name: ansible-galaxy
+        path: concepts/ansible-galaxy.md
+        confidence: 0.95
+      - name: molecule-testing
+        path: concepts/molecule-testing.md
+        confidence: 0.95
+    patterns:
+      - name: role-variable-scoping
+        path: patterns/role-variable-scoping.md
+      - name: idempotent-role-design
+        path: patterns/idempotent-role-design.md
+      - name: galaxy-requirements
+        path: patterns/galaxy-requirements.md
+      - name: molecule-testing
+        path: patterns/molecule-testing.md
+    specs:
+      - name: ansible-roles-spec
+        path: specs/ansible-roles-spec.yaml
+
+  # ==========================================================================
+  # DevOps Wiki Project Domains (current_project, Wave 1) — added 2026-04-23
+  # ==========================================================================
+
+  azure-devops-wiki:
+    name: Azure DevOps Wiki
+    description: Working with ADO Wiki as a Git-backed data source for a search indexer
+    path: azure-devops-wiki/
+    mcp_validated: "2026-04-23"
+    status: active
+    tags: [current_project]
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: git-structure
+        path: concepts/git-structure.md
+      - name: authentication
+        path: concepts/authentication.md
+      - name: webhooks
+        path: concepts/webhooks.md
+    patterns:
+      - name: clone-incremental
+        path: patterns/clone-incremental.md
+      - name: parse-order-files
+        path: patterns/parse-order-files.md
+      - name: detect-changes
+        path: patterns/detect-changes.md
+
+  sqlite-fts5:
+    name: SQLite FTS5
+    description: Full-text search engine for indexing Markdown content on AWS Lambda (Python stdlib)
+    path: sqlite-fts5/
+    mcp_validated: "2026-04-23"
+    status: active
+    tags: [current_project]
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: virtual-tables
+        path: concepts/virtual-tables.md
+      - name: tokenizers
+        path: concepts/tokenizers.md
+      - name: bm25-ranking
+        path: concepts/bm25-ranking.md
+    patterns:
+      - name: index-markdown
+        path: patterns/index-markdown.md
+      - name: snippets-highlighting
+        path: patterns/snippets-highlighting.md
+      - name: lambda-persistence
+        path: patterns/lambda-persistence.md
+
+  mediawiki-api:
+    name: MediaWiki API
+    description: Querying MediaWiki's JSON search API (api.php) with Python httpx
+    path: mediawiki-api/
+    mcp_validated: "2026-04-23"
+    status: active
+    tags: [current_project]
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: api-entry-point
+        path: concepts/api-entry-point.md
+      - name: namespaces
+        path: concepts/namespaces.md
+      - name: search-params
+        path: concepts/search-params.md
+    patterns:
+      - name: basic-search
+        path: patterns/basic-search.md
+      - name: pagination
+        path: patterns/pagination.md
+      - name: handle-errors
+        path: patterns/handle-errors.md
+
+  discourse-api:
+    name: Discourse API
+    description: Querying Discourse's /search.json endpoint with Python httpx
+    path: discourse-api/
+    mcp_validated: "2026-04-23"
+    status: active
+    tags: [current_project]
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: search-endpoint
+        path: concepts/search-endpoint.md
+      - name: api-keys-auth
+        path: concepts/api-keys-auth.md
+      - name: result-schema
+        path: concepts/result-schema.md
+    patterns:
+      - name: basic-search
+        path: patterns/basic-search.md
+      - name: rate-limits
+        path: patterns/rate-limits.md
+      - name: absolute-urls
+        path: patterns/absolute-urls.md
+
+  microsoft-sso:
+    name: Microsoft SSO (Entra ID)
+    description: Entra ID SSO for React SPA + Python Lambda — MSAL.js frontend + msal Python backend validation
+    path: microsoft-sso/
+    mcp_validated: "2026-04-23"
+    status: active
+    tags: [current_project, security]
+    category: CRITICAL
+    threshold: 0.98
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: app-registration
+        path: concepts/app-registration.md
+      - name: auth-code-flow-pkce
+        path: concepts/auth-code-flow-pkce.md
+      - name: token-validation
+        path: concepts/token-validation.md
+    patterns:
+      - name: msal-react-setup
+        path: patterns/msal-react-setup.md
+      - name: fastapi-token-validation
+        path: patterns/fastapi-token-validation.md
+      - name: cookie-reuse-reality
+        path: patterns/cookie-reuse-reality.md
+
+  # ==========================================================================
+  # DevOps Wiki Project Domains (current_project, Wave 2) — added 2026-04-23
+  # ==========================================================================
+
+  fastapi-lambda:
+    name: FastAPI on AWS Lambda
+    description: FastAPI + Mangum on AWS Lambda — aggregator handler, cold-start mitigation, Powertools integration
+    path: fastapi-lambda/
+    mcp_validated: "2026-04-23"
+    status: active
+    tags: [current_project]
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: mangum-adapter
+        path: concepts/mangum-adapter.md
+      - name: cold-start-mitigation
+        path: concepts/cold-start-mitigation.md
+      - name: powertools-integration
+        path: concepts/powertools-integration.md
+      - name: uvicorn-local
+        path: concepts/uvicorn-local.md
+        tags: [prototype]
+    patterns:
+      - name: aggregator-handler
+        path: patterns/aggregator-handler.md
+      - name: pydantic-schemas
+        path: patterns/pydantic-schemas.md
+      - name: error-handling
+        path: patterns/error-handling.md
+
+  python-httpx-async:
+    name: Python httpx (async)
+    description: Async httpx patterns for parallel fan-out to 3 search sources — timeouts, retries, circuit breakers, MockTransport testing
+    path: python-httpx-async/
+    mcp_validated: "2026-04-23"
+    status: active
+    tags: [current_project]
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: async-client-lifecycle
+        path: concepts/async-client-lifecycle.md
+      - name: timeouts-and-cancellation
+        path: concepts/timeouts-and-cancellation.md
+      - name: retry-and-circuit-breaker
+        path: concepts/retry-and-circuit-breaker.md
+    patterns:
+      - name: parallel-fanout
+        path: patterns/parallel-fanout.md
+      - name: retry-with-backoff
+        path: patterns/retry-with-backoff.md
+      - name: mock-transport-testing
+        path: patterns/mock-transport-testing.md
+
+  aws-serverless-web:
+    name: AWS Serverless Web
+    description: Lambda + API Gateway + CloudFront + S3 for low-scale serverless web apps — SAM, uv-built layers, CORS, cost
+    path: aws-serverless-web/
+    mcp_validated: "2026-04-23"
+    status: active
+    tags: [current_project]
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: api-gateway-vs-function-url
+        path: concepts/api-gateway-vs-function-url.md
+      - name: lambda-packaging-with-uv
+        path: concepts/lambda-packaging-with-uv.md
+      - name: cloudfront-s3-spa-hosting
+        path: concepts/cloudfront-s3-spa-hosting.md
+    patterns:
+      - name: sam-template-search-api
+        path: patterns/sam-template-search-api.md
+      - name: cors-for-spa-to-apigw
+        path: patterns/cors-for-spa-to-apigw.md
+      - name: cost-optimization
+        path: patterns/cost-optimization.md
+
+  react-search-ui:
+    name: React Search UI
+    description: React 18 + TS + Vite + Tailwind search SPA — debounced input, infinite scroll, dark mode, typed API client (auth in microsoft-sso KB)
+    path: react-search-ui/
+    mcp_validated: "2026-04-23"
+    status: active
+    tags: [current_project]
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: debounced-search
+        path: concepts/debounced-search.md
+      - name: infinite-scroll-intersection-observer
+        path: concepts/infinite-scroll-intersection-observer.md
+      - name: tailwind-dark-mode
+        path: concepts/tailwind-dark-mode.md
+    concepts_supplemental:
+      - name: vite-docker-hmr
+        path: concepts/vite-docker-hmr.md
+        tags: [prototype]
+    patterns:
+      - name: search-page-component
+        path: patterns/search-page-component.md
+      - name: result-item-with-snippet
+        path: patterns/result-item-with-snippet.md
+      - name: api-client-typed
+        path: patterns/api-client-typed.md
+
+  docker-compose-local-dev:
+    name: Docker Compose Local Dev
+    description: Laptop-local docker compose stack for the DevOps Wiki prototype — frontend + backend + one-shot indexer, named volumes, hot reload, proxy pass-through, CORS, .env hygiene
+    path: docker-compose-local-dev/
+    mcp_validated: "2026-04-24"
+    status: active
+    tags: [current_project, prototype]
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: compose-services
+        path: concepts/compose-services.md
+      - name: volumes-and-uids
+        path: concepts/volumes-and-uids.md
+      - name: secrets-hygiene
+        path: concepts/secrets-hygiene.md
+    patterns:
+      - name: three-service-compose
+        path: patterns/three-service-compose.md
+      - name: uv-dockerfile
+        path: patterns/uv-dockerfile.md
+      - name: hot-reload-setup
+        path: patterns/hot-reload-setup.md
+      - name: proxy-passthrough
+        path: patterns/proxy-passthrough.md
+      - name: compose-cors
+        path: patterns/compose-cors.md
+
+  helm-helmfile:
+    name: Helm + Helmfile
+    description: Chart authoring + Helmfile orchestration for the SRE Copilot kind cluster (backend/frontend/redis/traefik/LGTM/argo-rollouts) with ordered releases per DESIGN section 4.8
+    path: helm-helmfile/
+    mcp_validated: "2026-04-26"
+    status: active
+    tags: [current_project, sre-copilot]
+    threshold: 0.95
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: chart-anatomy
+        path: concepts/chart-anatomy.md
+      - name: values-inheritance
+        path: concepts/values-inheritance.md
+      - name: helmfile-model
+        path: concepts/helmfile-model.md
+      - name: lifecycle-and-hooks
+        path: concepts/lifecycle-and-hooks.md
+    patterns:
+      - name: app-chart-skeleton
+        path: patterns/app-chart-skeleton.md
+      - name: probes-and-security
+        path: patterns/probes-and-security.md
+      - name: helmfile-ordered-releases
+        path: patterns/helmfile-ordered-releases.md
+      - name: lint-template-diff
+        path: patterns/lint-template-diff.md
+      - name: common-pitfalls
+        path: patterns/common-pitfalls.md
+
+  otel-lgtm:
+    name: OpenTelemetry + LGTM
+    description: OTel SDK (Python + browser) + collector + Loki/Grafana/Tempo/Prometheus single-binary stack tuned for 16 GB Mac kind cluster, plus MWMBR SLO alerts
+    path: otel-lgtm/
+    mcp_validated: "2026-04-26"
+    status: active
+    tags: [current_project, sre-copilot]
+    threshold: 0.95
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: otel-sdk-init
+        path: concepts/otel-sdk-init.md
+      - name: collector-architecture
+        path: concepts/collector-architecture.md
+      - name: lgtm-stack-roles
+        path: concepts/lgtm-stack-roles.md
+      - name: slo-burn-rate-math
+        path: concepts/slo-burn-rate-math.md
+    patterns:
+      - name: python-fastapi-instrumentation
+        path: patterns/python-fastapi-instrumentation.md
+      - name: browser-otel-traceparent
+        path: patterns/browser-otel-traceparent.md
+      - name: otel-collector-config
+        path: patterns/otel-collector-config.md
+      - name: loki-single-binary-recipe
+        path: patterns/loki-single-binary-recipe.md
+      - name: tempo-monolithic-recipe
+        path: patterns/tempo-monolithic-recipe.md
+      - name: prometheus-servicemonitor
+        path: patterns/prometheus-servicemonitor.md
+      - name: grafana-sidecar-dashboards
+        path: patterns/grafana-sidecar-dashboards.md
+      - name: mwmbr-slo-alerts
+        path: patterns/mwmbr-slo-alerts.md
+
+  ollama-local-serving:
+    name: Ollama Local Serving
+    description: Host-side Ollama (Metal) bridged to kind via ExternalName Service; OpenAI-compat API, Qwen 2.5 7B serving + Llama 3.1 8B judge with on-demand load rotation
+    path: ollama-local-serving/
+    mcp_validated: "2026-04-26"
+    status: active
+    tags: [current_project, sre-copilot]
+    threshold: 0.95
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: macos-metal-serving
+        path: concepts/macos-metal-serving.md
+      - name: openai-compat-api
+        path: concepts/openai-compat-api.md
+      - name: model-selection
+        path: concepts/model-selection.md
+      - name: keep-alive-and-cold-load
+        path: concepts/keep-alive-and-cold-load.md
+      - name: kind-host-networking
+        path: concepts/kind-host-networking.md
+    patterns:
+      - name: openai-sdk-streaming
+        path: patterns/openai-sdk-streaming.md
+      - name: externalname-host-bridge
+        path: patterns/externalname-host-bridge.md
+      - name: structured-json-prompts
+        path: patterns/structured-json-prompts.md
+      - name: on-demand-model-load
+        path: patterns/on-demand-model-load.md
+      - name: model-rotation-debugging
+        path: patterns/model-rotation-debugging.md
+
+  argo-rollouts:
+    name: Argo Rollouts
+    description: Replace backend Deployment with Rollout CRD for canary releases (25/50/100) gated by Prometheus AnalysisTemplates per DESIGN section 4.5; demo runbook included
+    path: argo-rollouts/
+    mcp_validated: "2026-04-26"
+    status: active
+    tags: [current_project, sre-copilot]
+    threshold: 0.95
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: rollout-vs-deployment
+        path: concepts/rollout-vs-deployment.md
+      - name: analysis-templates
+        path: concepts/analysis-templates.md
+      - name: traffic-routing-modes
+        path: concepts/traffic-routing-modes.md
+    patterns:
+      - name: rollout-from-deployment
+        path: patterns/rollout-from-deployment.md
+      - name: prometheus-analysis-recipe
+        path: patterns/prometheus-analysis-recipe.md
+      - name: traefik-basic-canary
+        path: patterns/traefik-basic-canary.md
+      - name: hpa-rollout-integration
+        path: patterns/hpa-rollout-integration.md
+      - name: cli-demo-runbook
+        path: patterns/cli-demo-runbook.md
+      - name: abort-and-promote-flow
+        path: patterns/abort-and-promote-flow.md
+
+  code-simplifier:
+    name: Code Simplifier
+    description: Practical simplification heuristics for the SRE Copilot codebase — spotting complexity, collapsing redundant abstractions, avoiding silent-failure landmines in Python, Helm, Make, PromQL/LogQL, and Grafana
+    path: code-simplifier/
+    mcp_validated: "2026-04-27"
+    status: active
+    tags: [current_project, sre-copilot, cross-cutting]
+    threshold: 0.95
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: spotting-complexity
+        path: concepts/spotting-complexity.md
+        confidence: 0.95
+      - name: the-collapse-test
+        path: concepts/the-collapse-test.md
+        confidence: 0.95
+      - name: landmines
+        path: concepts/landmines.md
+        confidence: 0.95
+      - name: the-yagni-test
+        path: concepts/the-yagni-test.md
+        confidence: 0.95
+      - name: error-handling-discipline
+        path: concepts/error-handling-discipline.md
+        confidence: 0.95
+    patterns:
+      - name: append-not-replace
+        path: patterns/append-not-replace.md
+      - name: single-source-of-truth
+        path: patterns/single-source-of-truth.md
+      - name: conditional-helm-templates
+        path: patterns/conditional-helm-templates.md
+      - name: fail-loud-not-silent
+        path: patterns/fail-loud-not-silent.md
+      - name: data-link-vs-url
+        path: patterns/data-link-vs-url.md
+      - name: structured-fallback
+        path: patterns/structured-fallback.md
+      - name: idempotent-make-targets
+        path: patterns/idempotent-make-targets.md

@@ -1,4 +1,45 @@
-.claude
+# .claude/ — include the project's SDD artifacts, commands, dev scaffolding,
+# plus the KBs and agents that were actually used to build this project.
+# Exclude unused KBs and agents (carried over from other projects).
+#
+# Excluded KBs (other projects' tech stacks)
+.claude/kb/crewai/
+.claude/kb/docker-compose-local-dev/
+.claude/kb/fastapi-lambda/
+.claude/kb/gemini/
+.claude/kb/langfuse/
+.claude/kb/openrouter/
+.claude/kb/react-search-ui/
+.claude/kb/sqlite-fts5/
+.claude/kb/terragrunt/
+.claude/kb/code-simplifier/
+#
+# Excluded agents (not used in this project's SDD pipeline)
+.claude/agents/ai-ml/ai-data-engineer.md
+.claude/agents/ai-ml/ai-prompt-specialist.md
+.claude/agents/ai-ml/genai-architect.md
+.claude/agents/aws/lambda-builder.md
+.claude/agents/code-quality/code-cleaner.md
+.claude/agents/code-quality/code-simplifier.md
+.claude/agents/code-quality/dual-reviewer.md
+.claude/agents/communication/meeting-analyst.md
+.claude/agents/communication/the-planner.md
+.claude/agents/dev/
+.claude/agents/domain/dataops-builder.md
+.claude/agents/domain/docker-compose-architect.md
+.claude/agents/domain/extraction-specialist.md
+.claude/agents/domain/function-developer.md
+.claude/agents/domain/infra-deployer.md
+.claude/agents/domain/pipeline-architect.md
+.claude/agents/domain/python-lambda-developer.md
+.claude/agents/domain/search-indexer-specialist.md
+.claude/agents/exploration/codebase-explorer.md
+#
+# Local-only state
+.claude/storage/
+.claude/telemetry/sessions/
+.claude/telemetry/reports/
+
 .env
 .env.local
 .env.*.local

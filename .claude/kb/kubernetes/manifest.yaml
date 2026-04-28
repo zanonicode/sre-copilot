@@ -1,0 +1,46 @@
+kubernetes:
+  name: Kubernetes
+  description: Container orchestration for GKE, local dev (minikube), and multi-service workloads — pods, deployments, networking, storage, and GCP integration
+  path: kubernetes/
+  mcp_validated: "2026-04-22"
+  entry_points:
+    index: index.md
+    quick_reference: quick-reference.md
+  concepts:
+    - name: pods
+      path: concepts/pods.md
+      confidence: 0.95
+    - name: deployments
+      path: concepts/deployments.md
+      confidence: 0.95
+    - name: services
+      path: concepts/services.md
+      confidence: 0.95
+    - name: namespaces
+      path: concepts/namespaces.md
+      confidence: 0.95
+    - name: configmaps-secrets
+      path: concepts/configmaps-secrets.md
+      confidence: 0.95
+    - name: ingress
+      path: concepts/ingress.md
+      confidence: 0.95
+    - name: persistent-volumes
+      path: concepts/persistent-volumes.md
+      confidence: 0.95
+    - name: resource-limits
+      path: concepts/resource-limits.md
+      confidence: 0.95
+  patterns:
+    - name: health-checks
+      path: patterns/health-checks.md
+    - name: rolling-deployments
+      path: patterns/rolling-deployments.md
+    - name: horizontal-pod-autoscaling
+      path: patterns/horizontal-pod-autoscaling.md
+    - name: multi-container-pods
+      path: patterns/multi-container-pods.md
+    - name: job-cronjob
+      path: patterns/job-cronjob.md
+    - name: gke-workload-identity
+      path: patterns/gke-workload-identity.md
