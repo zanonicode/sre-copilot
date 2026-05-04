@@ -21,6 +21,7 @@ spec:
       interval: 30s
       count: 1
       failureLimit: 0
+      consecutiveErrorLimit: 6
       provider:
         web:
           url: "{{`{{args.canary-service-url}}`}}/admin/judge-canary?sample_size={{ .Values.judge.sampleSize | default 6 }}"

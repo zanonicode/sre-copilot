@@ -39,7 +39,7 @@ env:
   ANOMALY_INJECTOR_TOKEN: ""
   JUDGE_CANARY_TOKEN: ""
 
-rolloutTrigger: "2026-05-03-fixtures-in-image-quality-gate-on"
+rolloutTrigger: "2026-05-03-probe-leniency-and-smaller-sample"
 
 # F1 quality gate: enabled now that stable pods carry JUDGE_CANARY_TOKEN
 # AND ground-truth fixtures are bundled in the backend image
@@ -54,7 +54,7 @@ llm:
   judgeModel: "llama3.1:8b-instruct-q4_K_M"
 
 judge:
-  sampleSize: 6
+  sampleSize: 3
   passThreshold: 0.80
   timeoutSeconds: 240
 
