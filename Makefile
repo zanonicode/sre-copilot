@@ -17,7 +17,7 @@ LLM_JUDGE_MODEL ?= llama3.1:8b-instruct-q4_K_M
 INGRESS_HOST    ?= sre-copilot.localtest.me
 export LLM_MODEL LLM_JUDGE_MODEL INGRESS_HOST
 
-.PHONY: help up down seed-models demo demo-canary demo-reset smoke lint test seal detect-bridge judge restart-backend clean-replicasets trust-certs dashboards
+.PHONY: help up down seed-models demo demo-canary demo-canary-bad-prompt demo-canary-tiny-model demo-canary-broken-chunking demo-canary-bad-schema demo-canary-memory-leak demo-canary-slow demo-canary-clean demo-reset smoke lint test seal seal-add seal-judge-canary-token detect-bridge judge restart-backend clean-replicasets trust-certs dashboards
 
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -46,7 +46,7 @@ seed-models: ## Pull Ollama models and pre-pull all container images (run once)
 	docker pull traefik:v3.1
 	docker pull $(ARGOCD_IMAGE)
 	@echo "==> Building application images..."
-	docker build -t $(BACKEND_IMAGE) src/backend
+	docker build -f src/backend/Dockerfile -t $(BACKEND_IMAGE) .
 	docker build -t $(FRONTEND_IMAGE) src/frontend
 	@echo "==> seed-models complete"
 
@@ -139,10 +139,11 @@ demo: ## Paced demo for Loom recording (waits for ENTER between beats so the pre
 demo-canary: ## Build backend:v2, load into kind, bump Rollout image, watch progression
 	@echo "==> [demo-canary] Building backend:v2 image (adds confidence: float field)..."
 	docker build \
+	     -f src/backend/Dockerfile \
 	     --build-arg ENABLE_CONFIDENCE=true \
 	     -t $(BACKEND_V2_IMAGE) \
 	     --label "canary=v2" \
-	     src/backend
+	     .
 	@echo "==> [demo-canary] Loading backend:v2 into kind cluster..."
 	kind load docker-image $(BACKEND_V2_IMAGE) --name $(CLUSTER_NAME)
 	@echo "==> [demo-canary] Patching Rollout image to v2..."
@@ -168,6 +169,41 @@ demo-canary: ## Build backend:v2, load into kind, bump Rollout image, watch prog
 	@echo "    Background load logs: /tmp/sre-canary-load.log"
 	@echo "    For richer visualization: brew install argoproj/tap/kubectl-argo-rollouts"
 	$(KUBECTL) get rollout backend -n sre-copilot -w || true
+
+demo-canary-tiny-model: ## [F2 harness] Deploy v2 with phi3:mini (weak model) — judge gate should fire
+	@echo "==> [demo-canary-tiny-model] Deploying canary with values-tiny-model.yaml overlay..."
+	helm upgrade backend ./helm/backend -n sre-copilot \
+	  -f helm/backend/values.yaml -f helm/backend/values-tiny-model.yaml
+	@echo "==> Watch: kubectl argo rollouts get rollout backend -n sre-copilot --watch"
+
+demo-canary-broken-chunking: ## [F2 harness] Deploy v2 with truncated log chunks — judge gate should fire (needs backend hook)
+	@echo "==> [demo-canary-broken-chunking] WARNING: requires backend hook for CHUNK_MAX_CHARS env"
+	helm upgrade backend ./helm/backend -n sre-copilot \
+	  -f helm/backend/values.yaml -f helm/backend/values-broken-chunking.yaml
+
+demo-canary-bad-schema: ## [F2 harness] Deploy v2 with schema regression — Layer-1 pytest catches PRE-deploy (needs backend hook)
+	@echo "==> [demo-canary-bad-schema] WARNING: requires backend hook for ANALYZE_SCHEMA_OVERRIDE env"
+	helm upgrade backend ./helm/backend -n sre-copilot \
+	  -f helm/backend/values.yaml -f helm/backend/values-bad-schema.yaml
+
+demo-canary-memory-leak: ## [F2 harness] Deploy v2 with memory leak — operational gate fires (needs backend hook)
+	@echo "==> [demo-canary-memory-leak] WARNING: requires backend hook for MEMORY_LEAK_MB_PER_REQ middleware"
+	helm upgrade backend ./helm/backend -n sre-copilot \
+	  -f helm/backend/values.yaml -f helm/backend/values-memory-leak.yaml
+
+demo-canary-slow: ## [F2 harness] Deploy v2 with 5s LLM delay — operational gate (TTFT) fires (needs backend hook)
+	@echo "==> [demo-canary-slow] WARNING: requires backend hook for LLM_PRE_CALL_DELAY_S env"
+	helm upgrade backend ./helm/backend -n sre-copilot \
+	  -f helm/backend/values.yaml -f helm/backend/values-slow.yaml
+
+demo-canary-clean: ## [F2 harness] Deploy v2 identity (positive control) — both gates pass, promotes to 100%
+	@echo "==> [demo-canary-clean] Positive control: identity v2 deploy via stock values.yaml..."
+	$(MAKE) demo-canary
+
+demo-canary-bad-prompt: ## [F2 harness] Deploy v2 with hallucinating prompt — judge gate fires (needs backend hook)
+	@echo "==> [demo-canary-bad-prompt] WARNING: requires backend hook for ANALYZE_PROMPT_TEMPLATE_PATH env"
+	helm upgrade backend ./helm/backend -n sre-copilot \
+	  -f helm/backend/values.yaml -f helm/backend/values-bad-prompt.yaml
 
 demo-reset: ## Reset canary — revert backend Rollout to :latest and promote to stable
 	@echo "==> [demo-reset] Reverting backend Rollout to stable image ($(BACKEND_IMAGE))..."
@@ -295,7 +331,7 @@ test: ## Run unit + integration tests + Layer-1 structural eval (AT-008, AT-010)
 
 judge: ## Run Layer-2 Llama judge eval (AT-011) — requires live cluster + Ollama
 	@echo "==> Running Layer-2 Llama judge (requires backend on localhost:8000 + Ollama)..."
-	PYTHONPATH=src python tests/eval/judge/run_judge.py
+	PYTHONPATH=src python3 tests/eval/judge/run_judge.py
 
 seal: ## Seal a secret for the cluster's Sealed Secrets controller. Usage: make seal SECRET_NAME=my-secret KEY=mykey VALUE=myval
 	@if [ -z "$(SECRET_NAME)" ] || [ -z "$(KEY)" ] || [ -z "$(VALUE)" ]; then \
@@ -320,3 +356,40 @@ seal: ## Seal a secret for the cluster's Sealed Secrets controller. Usage: make 
 	@echo "==> Sealed secret written to deploy/secrets/$(SECRET_NAME).sealed.yaml"
 	@echo "    This file is safe to commit. The plain secret was discarded."
 	@git add deploy/secrets/$(SECRET_NAME).sealed.yaml 2>/dev/null || true
+
+seal-add: ## Add a key to an EXISTING sealed secret without losing the other keys. Usage: make seal-add SECRET_NAME=backend-secrets KEY=JUDGE_CANARY_TOKEN VALUE=xxx
+	@if [ -z "$(SECRET_NAME)" ] || [ -z "$(KEY)" ] || [ -z "$(VALUE)" ]; then \
+	  echo "Usage: make seal-add SECRET_NAME=<name> KEY=<key> VALUE=<value>"; \
+	  echo "Adds KEY=VALUE to deploy/secrets/<SECRET_NAME>.sealed.yaml without overwriting other keys."; \
+	  exit 1; \
+	fi
+	@if [ ! -f deploy/secrets/$(SECRET_NAME).sealed.yaml ]; then \
+	  echo "ERROR: deploy/secrets/$(SECRET_NAME).sealed.yaml does not exist."; \
+	  echo "       Use 'make seal SECRET_NAME=$(SECRET_NAME) KEY=$(KEY) VALUE=$(VALUE)' for first key."; \
+	  exit 1; \
+	fi
+	@echo "==> Merging $(KEY) into existing $(SECRET_NAME).sealed.yaml..."
+	$(KUBECTL) create secret generic $(SECRET_NAME) \
+	  --namespace sre-copilot \
+	  --from-literal=$(KEY)=$(VALUE) \
+	  --dry-run=client -o yaml | \
+	kubeseal \
+	  --kubeconfig $(KUBECONFIG) \
+	  --controller-namespace platform \
+	  --controller-name sealed-secrets \
+	  --format yaml \
+	  --merge-into deploy/secrets/$(SECRET_NAME).sealed.yaml
+	@echo "==> Updated deploy/secrets/$(SECRET_NAME).sealed.yaml ($(KEY) added)"
+	@echo "    Apply with: kubectl apply -f deploy/secrets/$(SECRET_NAME).sealed.yaml"
+
+seal-judge-canary-token: ## Generate a random JUDGE_CANARY_TOKEN, write to .env, seal into backend-secrets
+	@TOKEN=$$(openssl rand -hex 32); \
+	echo "==> Generated 32-byte hex token (will not be printed)"; \
+	if grep -q '^export JUDGE_CANARY_TOKEN=' .env 2>/dev/null; then \
+	  sed -i.bak "s|^export JUDGE_CANARY_TOKEN=.*|export JUDGE_CANARY_TOKEN=\"$$TOKEN\"|" .env && rm -f .env.bak; \
+	  echo "    Updated JUDGE_CANARY_TOKEN in .env"; \
+	else \
+	  echo "export JUDGE_CANARY_TOKEN=\"$$TOKEN\"" >> .env; \
+	  echo "    Appended JUDGE_CANARY_TOKEN to .env"; \
+	fi; \
+	$(MAKE) seal-add SECRET_NAME=backend-secrets KEY=JUDGE_CANARY_TOKEN VALUE="$$TOKEN"

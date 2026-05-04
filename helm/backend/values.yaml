@@ -39,12 +39,12 @@ env:
   ANOMALY_INJECTOR_TOKEN: ""
   JUDGE_CANARY_TOKEN: ""
 
-rolloutTrigger: "2026-05-03-quality-gate-disabled"
+rolloutTrigger: "2026-05-03-fixtures-in-image-quality-gate-on"
 
-# F1 quality gate: feature-flagged. Re-enable once stable pods carry
-# JUDGE_CANARY_TOKEN AND LLM-judge fixtures are reachable from canary pods.
-# See: open items in .claude/storage/memory-2026-05-03.md
-canaryQualityGateEnabled: false
+# F1 quality gate: enabled now that stable pods carry JUDGE_CANARY_TOKEN
+# AND ground-truth fixtures are bundled in the backend image
+# (datasets/eval/ground_truth/*.json + tests/eval/judge/rubric.yaml).
+canaryQualityGateEnabled: true
 
 ollama:
   serviceUrl: "http://ollama.sre-copilot.svc.cluster.local:11434/v1"

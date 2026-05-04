@@ -8,7 +8,7 @@ FROM python:3.12-slim AS builder
 ENV TIKTOKEN_CACHE_DIR=/install/tiktoken_cache
 
 WORKDIR /build
-COPY requirements.txt .
+COPY src/backend/requirements.txt .
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt && \
     PYTHONPATH=/install/lib/python3.12/site-packages \
     python -c "import tiktoken; tiktoken.get_encoding('cl100k_base')"
@@ -30,7 +30,9 @@ RUN groupadd --gid 1001 appgroup && \
     useradd --uid 1001 --gid appgroup --no-create-home appuser
 
 WORKDIR /app
-COPY . /app/src/backend/
+COPY src/backend /app/src/backend
+COPY datasets /app/datasets
+COPY tests/eval/judge /app/tests/eval/judge
 
 USER appuser
 
