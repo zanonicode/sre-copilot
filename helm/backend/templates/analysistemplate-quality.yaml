@@ -1,0 +1,30 @@
+{{- if .Values.useArgoRollouts }}
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: backend-canary-quality
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: backend
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  args:
+    - name: canary-service-url
+      value: "http://backend-canary.{{ .Release.Namespace }}.svc.cluster.local:8000"
+    - name: judge-canary-token
+      value: {{ .Values.judgeCanaryToken | default "" | quote }}
+  metrics:
+    - name: llm-quality
+      interval: 30s
+      count: 1
+      failureLimit: 0
+      provider:
+        web:
+          url: "{{`{{args.canary-service-url}}`}}/admin/judge-canary?sample_size={{ .Values.judge.sampleSize | default 6 }}"
+          headers:
+            - key: Authorization
+              value: "Bearer {{`{{args.judge-canary-token}}`}}"
+          jsonPath: "{$.root_cause_match_rate}"
+          timeoutSeconds: {{ .Values.judge.timeoutSeconds | default 240 }}
+      successCondition: result >= {{ .Values.judge.passThreshold | default 0.80 }}
+{{- end }}
