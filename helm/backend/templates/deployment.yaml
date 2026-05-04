@@ -39,12 +39,25 @@ spec:
           envFrom:
             - configMapRef:
                 name: backend-config
+            {{- range $name, $cfg := .Values.providers }}
+            {{- if $cfg.enabled }}
+            - secretRef:
+                name: backend-judge-{{ $name }}
+                optional: true
+            {{- end }}
+            {{- end }}
           env:
             - name: ANOMALY_INJECTOR_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: backend-secrets
                   key: ANOMALY_INJECTOR_TOKEN
+                  optional: true
+            - name: JUDGE_CANARY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: backend-secrets
+                  key: JUDGE_CANARY_TOKEN
                   optional: true
           resources:
             requests:

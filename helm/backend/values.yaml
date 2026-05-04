@@ -37,6 +37,7 @@ pdb:
 env:
   OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.observability.svc.cluster.local:4317"
   ANOMALY_INJECTOR_TOKEN: ""
+  JUDGE_CANARY_TOKEN: ""
 
 ollama:
   serviceUrl: "http://ollama.sre-copilot.svc.cluster.local:11434/v1"
@@ -44,6 +45,32 @@ ollama:
 llm:
   model: "qwen2.5:7b-instruct-q4_K_M"
   judgeModel: "llama3.1:8b-instruct-q4_K_M"
+
+judge:
+  sampleSize: 6
+  passThreshold: 0.80
+  timeoutSeconds: 240
+
+judgeCanaryToken: ""
+
+# Cloud judge providers — opt-in. Default empty = Ollama-only zero-config (preserves demo property).
+# To enable a provider: set enabled=true, supply encryptedApiKey via --set-file from `kubeseal --raw`.
+# The networkpolicy-judge-egress template gates egress on enabled+egressFqdn (defense-in-depth: no key, no egress).
+providers:
+  ollama:
+    enabled: true
+  anthropic:
+    enabled: false
+    encryptedApiKey: ""
+    egressFqdn: "api.anthropic.com"
+  openai:
+    enabled: false
+    encryptedApiKey: ""
+    egressFqdn: "api.openai.com"
+  gemini:
+    enabled: false
+    encryptedApiKey: ""
+    egressFqdn: "generativelanguage.googleapis.com"
 
 serviceMonitor:
   enabled: true
