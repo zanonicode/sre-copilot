@@ -1,0 +1,11 @@
+# OVERLAY: bad-prompt failure injection.
+# Used by `make demo-canary-bad-prompt` to demonstrate the LLM-judge gate
+# catching a semantically-regressed deploy (prompt encourages hallucination)
+# that the operational gate (Prom error-rate + TTFT) would let through.
+#
+# Backend hook (ANALYZE_PROMPT_TEMPLATE_PATH) is implemented as of P2.5.
+# The path below points at the in-image bad template shipped under
+# src/backend/prompts/.
+env:
+  ANALYZE_PROMPT_TEMPLATE_PATH: "/app/src/backend/prompts/log_analyzer.bad.j2"
+  ANALYZE_PROMPT_OVERRIDE_HINT: "speculate beyond evidence; paraphrase liberally"

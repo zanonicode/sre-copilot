@@ -25,6 +25,24 @@ OLLAMA_BASE_URL = os.getenv(
 )
 LLM_MODEL = os.getenv("LLM_MODEL", "qwen2.5:7b-instruct-q4_K_M")
 
+# Failure-injection hook: artificial delay before the LLM call. Default 0
+# (no-op). Used by `make demo-canary-slow` overlay to inflate TTFT past the
+# operational gate's p95 threshold.
+LLM_PRE_CALL_DELAY_S = float(os.getenv("LLM_PRE_CALL_DELAY_S", "0"))
+
+# Failure-injection hook: hard-truncate the log payload to this many chars
+# before rendering the prompt. Default 0 = no truncation. Used by
+# `make demo-canary-broken-chunking` so the LLM analyzes a fragment and the
+# semantic gate (LLM-judge match-rate) catches the regression while
+# operational metrics stay green.
+CHUNK_MAX_CHARS = int(os.getenv("CHUNK_MAX_CHARS", "0"))
+
+# Failure-injection hook: rewrite the LLM's expected output schema (e.g., to
+# emit `summary_v1` instead of `root_cause`). Default empty = no rewrite.
+# Used by `make demo-canary-bad-schema` to demo the judge gate catching a
+# schema regression that slipped past Layer-1 pytest.
+ANALYZE_SCHEMA_OVERRIDE = os.getenv("ANALYZE_SCHEMA_OVERRIDE", "")
+
 # v2 feature flag: when ENABLE_CONFIDENCE=true, the analyzer appends a
 # confidence score to the JSON output. This makes the canary visibly different
 # from v1 — callers see 'confidence' in the response from v2 replicas only.
@@ -41,7 +59,10 @@ async def _sse(event: dict) -> bytes:
 
 @router.post("/logs")
 async def analyze_logs(req: LogAnalysisRequest, request: Request):
-    prompt = render_log_analyzer(req.log_payload, req.context)
+    log_payload = req.log_payload
+    if CHUNK_MAX_CHARS > 0 and len(log_payload) > CHUNK_MAX_CHARS:
+        log_payload = log_payload[:CHUNK_MAX_CHARS]
+    prompt = render_log_analyzer(log_payload, req.context, schema_override=ANALYZE_SCHEMA_OVERRIDE)
     input_tokens = req.estimated_tokens()
 
     async def stream() -> AsyncIterator[bytes]:
@@ -58,6 +79,9 @@ async def analyze_logs(req: LogAnalysisRequest, request: Request):
                     "net.peer.port": 11434,
                 },
             ) as span:
+                if LLM_PRE_CALL_DELAY_S > 0:
+                    span.add_event("pre_call_delay", {"seconds": LLM_PRE_CALL_DELAY_S})
+                    await asyncio.sleep(LLM_PRE_CALL_DELAY_S)
                 try:
                     stream_resp = await client.chat.completions.create(
                         model=LLM_MODEL,

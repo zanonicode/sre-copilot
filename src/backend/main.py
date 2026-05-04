@@ -20,10 +20,15 @@ init_observability_providers()
 
 # Now safe to import modules that create instruments/tracers at module load.
 from backend.admin.injector import router as admin_router  # noqa: E402
+from backend.admin.judge_canary import router as judge_canary_router  # noqa: E402
 from backend.api.analyze import router as analyze_router  # noqa: E402
 from backend.api.health import router as health_router  # noqa: E402
 from backend.api.postmortem import router as postmortem_router  # noqa: E402
-from backend.middleware import RequestIdMiddleware, register_error_handlers  # noqa: E402
+from backend.middleware import (  # noqa: E402
+    MemoryLeakMiddleware,
+    RequestIdMiddleware,
+    register_error_handlers,
+)
 
 
 @asynccontextmanager
@@ -49,6 +54,7 @@ app.add_middleware(
 )
 
 app.add_middleware(RequestIdMiddleware)
+app.add_middleware(MemoryLeakMiddleware)
 register_error_handlers(app)
 
 # Wire FastAPI auto-instrumentation onto the app instance.
@@ -58,3 +64,4 @@ app.include_router(analyze_router, prefix="/analyze")
 app.include_router(postmortem_router, prefix="/generate")
 app.include_router(health_router)
 app.include_router(admin_router)
+app.include_router(judge_canary_router)

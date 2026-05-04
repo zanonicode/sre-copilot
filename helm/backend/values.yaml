@@ -39,7 +39,7 @@ env:
   ANOMALY_INJECTOR_TOKEN: ""
   JUDGE_CANARY_TOKEN: ""
 
-rolloutTrigger: "2026-05-04-disable-gate-park-llm-e2e"
+rolloutTrigger: "2026-05-04-five-failure-injection-hooks"
 
 # F1 quality gate: chart wiring is complete (token + fixtures + secretKeyRef
 # + asyncio.to_thread offload), but end-to-end runs on kind starve the
