@@ -39,7 +39,7 @@ env:
   ANOMALY_INJECTOR_TOKEN: ""
   JUDGE_CANARY_TOKEN: ""
 
-rolloutTrigger: "2026-05-03-judge-canary-token"
+rolloutTrigger: "2026-05-03-image-rebuild-with-admin-routes"
 
 ollama:
   serviceUrl: "http://ollama.sre-copilot.svc.cluster.local:11434/v1"
