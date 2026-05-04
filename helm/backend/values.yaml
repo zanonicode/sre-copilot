@@ -39,7 +39,12 @@ env:
   ANOMALY_INJECTOR_TOKEN: ""
   JUDGE_CANARY_TOKEN: ""
 
-rolloutTrigger: "2026-05-03-step-args-no-override"
+rolloutTrigger: "2026-05-03-quality-gate-disabled"
+
+# F1 quality gate: feature-flagged. Re-enable once stable pods carry
+# JUDGE_CANARY_TOKEN AND LLM-judge fixtures are reachable from canary pods.
+# See: open items in .claude/storage/memory-2026-05-03.md
+canaryQualityGateEnabled: false
 
 ollama:
   serviceUrl: "http://ollama.sre-copilot.svc.cluster.local:11434/v1"

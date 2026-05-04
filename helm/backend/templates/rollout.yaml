@@ -131,8 +131,10 @@ spec:
         - setWeight: 50
         - pause:
             duration: 60s
+        {{- if .Values.canaryQualityGateEnabled }}
         - analysis:
             templates:
               - templateName: backend-canary-quality
+        {{- end }}
         - setWeight: 100
 {{- end }}
