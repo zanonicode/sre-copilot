@@ -335,6 +335,8 @@ lint: ## Run all static analysis (ruff, mypy, eslint, helm lint, terraform fmt, 
 	helm lint helm/platform/traefik
 	helm lint helm/platform/ollama-externalname
 	helm lint helm/platform/networkpolicies
+	@echo "==> Chart cross-ref check (Rollout->AnalysisTemplate)..."
+	python3 scripts/check-chart-cross-refs.py
 	@echo "==> Terraform fmt check..."
 	terraform fmt -check terraform/local/ || true
 	@echo "==> YAML lint..."
