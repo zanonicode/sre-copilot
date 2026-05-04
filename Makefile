@@ -17,7 +17,7 @@ LLM_JUDGE_MODEL ?= llama3.1:8b-instruct-q4_K_M
 INGRESS_HOST    ?= sre-copilot.localtest.me
 export LLM_MODEL LLM_JUDGE_MODEL INGRESS_HOST
 
-.PHONY: help up down seed-models demo demo-canary demo-canary-bad-prompt demo-canary-tiny-model demo-canary-broken-chunking demo-canary-bad-schema demo-canary-memory-leak demo-canary-slow demo-canary-clean demo-reset smoke lint test seal seal-add seal-judge-canary-token detect-bridge judge restart-backend clean-replicasets trust-certs dashboards
+.PHONY: help up down seed-models demo demo-canary demo-canary-bad-prompt demo-canary-tiny-model demo-canary-broken-chunking demo-canary-bad-schema demo-canary-memory-leak demo-canary-slow demo-canary-clean demo-reset smoke lint test seal seal-add seal-judge-canary-token detect-bridge judge restart-backend rebuild-backend clean-replicasets trust-certs dashboards
 
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -211,6 +211,24 @@ demo-reset: ## Reset canary — revert backend Rollout to :latest and promote to
 	     -p '{"spec":{"template":{"spec":{"containers":[{"name":"backend","image":"$(BACKEND_IMAGE)"}]}}}}'
 	@echo "==> [demo-reset] Rollout reverted to $(BACKEND_IMAGE)"
 	@echo "    For full canary CLI control (promote/abort), install: brew install argoproj/tap/kubectl-argo-rollouts"
+
+rebuild-backend: ## Rebuild backend image, load into kind, bump rolloutTrigger via git so ArgoCD reconciles. One-shot dev loop.
+	@echo "==> [rebuild-backend] Building $(BACKEND_IMAGE) (context=repo root)..."
+	docker build -f src/backend/Dockerfile -t $(BACKEND_IMAGE) .
+	@echo "==> [rebuild-backend] Loading into kind cluster '$(CLUSTER_NAME)'..."
+	kind load docker-image $(BACKEND_IMAGE) --name $(CLUSTER_NAME)
+	@echo "==> [rebuild-backend] Bumping rolloutTrigger in helm/backend/values.yaml..."
+	@TS=$$(date -u +%Y-%m-%dT%H-%M-%SZ); \
+	  sed -i.bak -E "s|^(rolloutTrigger: ).*|\1\"rebuild-$$TS\"|" helm/backend/values.yaml && \
+	  rm -f helm/backend/values.yaml.bak && \
+	  echo "    -> rolloutTrigger=rebuild-$$TS"
+	@echo "==> [rebuild-backend] Committing and pushing so ArgoCD picks it up..."
+	git add helm/backend/values.yaml
+	git commit -m "chore(backend): rebuild trigger $$(date -u +%Y-%m-%dT%H:%M:%SZ)" || echo "    (no changes — skipping commit)"
+	git push || echo "    (push failed — push manually if needed)"
+	@echo "==> [rebuild-backend] Forcing ArgoCD refresh..."
+	$(KUBECTL) annotate application backend -n argocd argocd.argoproj.io/refresh=hard --overwrite
+	@echo "==> [rebuild-backend] Done. Watch with: kubectl --kubeconfig=$(KUBECONFIG) get rollout backend -n sre-copilot -w"
 
 restart-backend: ## Trigger an in-place restart of the backend Rollout (Argo-Rollouts native, no plugin needed)
 	@echo "==> [restart-backend] Setting spec.restartAt — Argo Rollouts will roll pods respecting canary strategy..."
