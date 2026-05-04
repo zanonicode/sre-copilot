@@ -134,10 +134,5 @@ spec:
         - analysis:
             templates:
               - templateName: backend-canary-quality
-            args:
-              - name: canary-service-url
-                value: "http://backend-canary.{{ .Release.Namespace }}.svc.cluster.local:8000"
-              - name: judge-canary-token
-                value: {{ .Values.judgeCanaryToken | default "" | quote }}
         - setWeight: 100
 {{- end }}
