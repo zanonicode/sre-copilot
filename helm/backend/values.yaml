@@ -39,12 +39,16 @@ env:
   ANOMALY_INJECTOR_TOKEN: ""
   JUDGE_CANARY_TOKEN: ""
 
-rolloutTrigger: "2026-05-03-judge-async-to-thread"
+rolloutTrigger: "2026-05-04-disable-gate-park-llm-e2e"
 
-# F1 quality gate: enabled now that stable pods carry JUDGE_CANARY_TOKEN
-# AND ground-truth fixtures are bundled in the backend image
-# (datasets/eval/ground_truth/*.json + tests/eval/judge/rubric.yaml).
-canaryQualityGateEnabled: true
+# F1 quality gate: chart wiring is complete (token + fixtures + secretKeyRef
+# + asyncio.to_thread offload), but end-to-end runs on kind starve the
+# observability stack and cause 4-min judge calls to 503. Re-enable after
+# - increasing kind node resources (cpu/memory) OR
+# - moving Ollama to a dedicated host outside kind OR
+# - reducing parallelism in panel_score (sequential calls to ease load)
+# See: P0-quality-gate-e2e in the demo-debt plan.
+canaryQualityGateEnabled: false
 
 ollama:
   serviceUrl: "http://ollama.sre-copilot.svc.cluster.local:11434/v1"
