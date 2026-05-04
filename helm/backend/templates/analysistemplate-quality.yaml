@@ -12,7 +12,10 @@ spec:
     - name: canary-service-url
       value: "http://backend-canary.{{ .Release.Namespace }}.svc.cluster.local:8000"
     - name: judge-canary-token
-      value: {{ .Values.judgeCanaryToken | default "" | quote }}
+      valueFrom:
+        secretKeyRef:
+          name: backend-secrets
+          key: JUDGE_CANARY_TOKEN
   metrics:
     - name: llm-quality
       interval: 30s
